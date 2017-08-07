@@ -1,5 +1,4 @@
-#!/usr/bin/perl
-
+#!usr/bin/perl
 use List::MoreUtils qw(uniq);
 
 use strict;
@@ -70,7 +69,18 @@ if ( -e  "$outdir/KLD/KLD.txt") {
     close IN;
     $KLD_pres=1;
 }
-    
+$KLD_pres=0;
+
+my $best_ncl=0;
+if ( -e  "$outdir/KLD/best_ncl.txt") {
+    open IN, "$outdir/KLD/best_ncl.txt", or die;
+    my $l=<IN>;
+    #chomp($l);
+    $l =~ s/\r?\n$//;
+    my @a=split(' ', $l);
+    $best_ncl=$a[4];
+    close IN;
+}
 
 #Get the single logo
 
@@ -95,7 +105,12 @@ for (my $i = 0; $i < scalar(@single_list); $i++) {
 }
 
 print OUT '<p><font size="7">'.$name.'</font></p>'."\n";
-print OUT '<font size="5"><b>Logo of the single cluster</b></font>'."\n";
+print OUT '<font size="4"><b>1 motif'."\n";
+if($best_ncl==1){
+    print OUT ' - Optimal number of predicted motifs</b></font>'."\n";
+} else {
+    print OUT '</b></font>'."\n";
+}
 if ($KLD_pres==1) {
     print OUT '<p><font size="3"><b>Score = '.$KLD[1].'</b></font></p>'."\n";
 }
@@ -105,7 +120,6 @@ print OUT '<div class="float"><img src="'.$logo_dir.'/'.$single.'" width="250" h
 #Get the multiple logos
     
 print OUT '<div class="spacer">&nbsp;</div>'."\n";
-print OUT '<font size="5"><b>Logos of multiple clusters</b></font>'."\n";
 #print OUT '<div class="spacer">&nbsp;</div>'."\n";
 
     
@@ -151,7 +165,12 @@ for (my $sm=2; $sm<=20; $sm++) {
     }
     if (scalar @multiple == $sm) {
 	#print OUT '<div class="spacer">&nbsp;</div>'."\n";
-	print OUT '<p><font size="4"><b>'.$sm.' clusters</b></font></p>'."\n";
+	print OUT '<p><font size="4"><b>'.$sm.' motifs'."\n";
+	if($best_ncl==$sm){
+	    print OUT ' - Optimal number of predicted motifs</b></font></p>'."\n";
+	} else {
+	    print OUT '</b></font></p>'."\n";
+	}
 	if ($KLD_pres==1) {
 	    print OUT '<p><font size="3"><b>Score = '.$KLD[$sm].'</b><font></p>'."\n";
 	}

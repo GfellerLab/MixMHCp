@@ -68,7 +68,6 @@ void remove_columns(int **tpeptide, int tnaa);
 void print_responsibility(int ncl, double **resp);
 
 void import_bias(char * out_dir, int bs);
-void import_blosum(char * out_dir);
 
 void make_cluster_pwm(int si, int ncl, double ***m, double **resp);
 
@@ -77,7 +76,6 @@ void best_ncl(int ncl, double *KLD, double ****EM_pwm, double **wcl);
 //Global variables
 
 int N;    //Alphabet size
-int DNA;  //0: peptide, 1: DNA
 int naa; //number of residues (column) in the alignment for each peptide
 int **peptide; // peptide composition [domain][position][peptide] (after filtering some columns)
 int tnaa;
@@ -98,7 +96,7 @@ char * out_dir;
 double *bias;
 double pseudo_count;
 double pseudo_count_prior;
-double **blo;
+char * alphabet;
 
 /*
   Run with:
@@ -113,10 +111,12 @@ int main(int argc, char ** argv)
     }
     char * alignment_dir = new char[4096];
     out_dir = new char[4096];
-
+    alphabet = new char[4096];
+    
     int bs;
      
     for (int i=4; i<argc; i+=2) {
+	
 	if (strcmp(argv[i], "-d") == 0) {
 	    //loads the param -d, out_dir
 	    strcpy(out_dir, argv[i+1]);
@@ -125,6 +125,10 @@ int main(int argc, char ** argv)
  	else if (strcmp(argv[i], "-b") == 0) {
 	    //loads the param -b, background frequencies
 	    bs=atoi(argv[i+1]);
+	}
+ 	else if (strcmp(argv[i], "-a") == 0) {
+	    //loads the param -b, background frequencies
+	    strcpy(alphabet, argv[i+1]);
 	}
     }
  
@@ -136,7 +140,6 @@ int main(int argc, char ** argv)
     init_parameters(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]));
     import_alignment(alignment_dir);
     import_bias(out_dir, bs);
-    import_blosum(out_dir);
     
     initialize_comp();
     
@@ -153,24 +156,9 @@ void init_parameters(int a, int b, int c)
 
     //Peptide
     if( a==0 ){
-	DNA=0;
-	N=20;
-	letter=new char[N+2];
-	strcpy(letter, "ACDEFGHIKLMNPQRSTVWYX");
-    }
-    //DNA
-    if( a==1 ){
-	DNA=1;
-	N=4;
-	letter=new char[N+2];
-	strcpy(letter, "ACGTX");
-    }
-    //RNA
-    if( a==2 ){
-	DNA=1;
-	N=4;
-	letter=new char[N+2];
-	strcpy(letter, "ACGUX");
+	N=strlen(alphabet);
+	letter=new char[N+1];
+	strcpy(letter, alphabet);
     }
     
     if(b==0){
@@ -694,12 +682,13 @@ void normalize_pseudo(double *pr1)
     for(int i=0; i<N; i++){
 	g[i]=0;
 	for(int ii=0; ii<N; ii++){
-	    g[i]=g[i]+blo[ii][i]*pr1[ii]/tot;
+	    g[i]=g[i]+1.0/N*pr1[ii]/tot;
 	}
     }
     for(int i=0; i<N; i++){
 	pr1[i]=(pr1[i]+pseudo_count*g[i])/(tot+pseudo_count);
     }
+    
     
 }
 
@@ -865,38 +854,6 @@ double absv(double a)
     return(a);
 }
 
-//Note that a flat blosum score and a flat background freq is equivalent to taking a flat pseudo_count, as done in the EM algorithm.
-
-void import_blosum(char * out_dir){
-
-    blo=new double*[N];
-    for (int i = 0; i < N; i++)
-	blo[i]=new double[N];
-
-    char file [4096];
-    char c;
-    double T;
-    sprintf(file, "%s/blosum62.txt", out_dir);
-    afile.open(file, ios::in);
-
-   
-    for (int i = 0; i < N; i++){
-	afile>>c;
-    }
-    for (int i = 0; i < N; i++){
-	afile>>c;
-	T=0;
-	for (int j = 0; j < N; j++){
-	    afile>>blo[i][j];
-	    T=T+blo[i][j];
-	}
-	for (int j = 0; j < N; j++){
-	    blo[i][j]=blo[i][j]/T;
-	}
-    }
-    afile.close();
-
-}
 
 void import_bias(char * out_dir, int bs){
     
@@ -1320,83 +1277,13 @@ int position(char s)
 {
 
     int pp=0;
-
-    //We are working with peptides 
-    if(DNA==0){
-	  
-	if(s == 'A' || s == 'a')
-	    pp=0;
-	if(s == 'C' || s == 'c')
-	    pp=1;
-	if(s == 'D' || s == 'd')
-	    pp=2;
-	if(s == 'E' || s == 'e')
-	    pp=3;
-	if(s == 'F' || s == 'f')
-	    pp=4;
-	if(s == 'G' || s == 'g')
-	    pp=5;
-	if(s == 'H' || s == 'h')
-	    pp=6;
-	if(s == 'I' || s == 'i')
-	    pp=7;
-	if(s == 'K' || s == 'k')
-	    pp=8;
-	if(s == 'L' || s == 'l')
-	    pp=9;
-	if(s == 'M' || s == 'm')
-	    pp=10;
-	if(s == 'N' || s == 'n')
-	    pp=11;
-	if(s == 'P' || s == 'p')
-	    pp=12;
-	if(s == 'Q' || s == 'q')
-	    pp=13;
-	if(s == 'R' || s == 'r')
-	    pp=14;
-	if(s == 'S' || s == 's')
-	    pp=15;
-	if(s == 'T' || s == 't')
-	    pp=16;
-	if(s == 'V' || s == 'v')
-	    pp=17;
-	if(s == 'W' || s == 'w')
-	    pp=18;
-	if(s == 'Y' || s == 'y')
-	    pp=19;
-	if(s == 'X' || s == '-' || s == 'x' || s == '*')
-	    pp=N;
-    }
-
-    if(DNA==1){
-
-	if(s == 'A' || s == 'a')
-	    pp=0;
-	if(s == 'C' || s == 'c')
-	    pp=1;
-	if(s == 'G' || s == 'g')
-	    pp=2;
-	if(s == 'T' || s == 't')
-	    pp=3;
-	if(s == 'X' || s == '-' || s == 'x' || s == '*')
-	    pp=N;
-    }
-
-    if(DNA==2){
-
-	if(s == 'A' || s == 'a')
-	    pp=0;
-	if(s == 'C' || s == 'c')
-	    pp=1;
-	if(s == 'G' || s == 'g')
-	    pp=2;
-	if(s == 'U' || s == 'u')
-	    pp=3;
-	if(s == 'X' || s == '-' || s == 'x' || s == '*')
-	    pp=N;
-    }
+    for(int i=0; i<strlen(letter); i++){
+	if(s == letter[i]){
+	    pp=i;
+	}
+    }  
     return(pp);
-
+    
 }
 
 

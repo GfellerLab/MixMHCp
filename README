@@ -4,18 +4,28 @@
 #
 # For any question, please contact david.gfeller@unil.ch
 #
-# To cite MixMHCp, please refer to Bassani-Sternberg M and Gfeller D*, J. Immunol. (2016)
+# To cite MixMHCp, please refer to Bassani-Sternberg M and Gfeller D, J. Immunol. (2016)
 #
 # MixMHCp can be used freely by academic groups for non-commercial purposes (see license).
 # The product is provided free of charge, and, therefore, on an "as is"
 # basis, without warranty of any kind.
 #
 # FOR-PROFIT USERS
-# If you plan to use MixMHCp (version 1.0) in any for-profit
+# If you plan to use MixMHCp (version 1.1) in any for-profit
 # application, you are required to obtain a separate license.
 # To do so, please contact eauffarth@licr.org or lfoit@licr.org at the Ludwig Institute for  Cancer Research Ltd.
 #
 # Copyright (2016) David Gfeller
+############
+
+############
+# New features of the version 1.1
+############
+
+Up to 20 modified or non-natural amino acids are allowed. Please use small letters 'acdefghiklmnpqrstvwy'.
+If you use this option, please indicate the complete alphabet after the -a option in the command line.
+Note: Each letter is treated as a distinct amino acid in the calculation, but currently capital and small letters are merged in the logos (work in progress).
+
 ############
 
 MixMHCp is to be run from the terminal (command-line) on Mac and Linux. It requires perl, java and C++ scripts to run on your machine.
@@ -24,13 +34,13 @@ MixMHCp is to be run from the terminal (command-line) on Mac and Linux. It requi
 
 1) Create a directory where to install MixMHCp. Please avoid blank space or non-canonical characters in your path. 
 
-2) Decompress MixMHCp1.0.tar.gz in this directory.
+2) Decompress MixMHCp1.1.tar.gz in this directory.
 
-3) Open MixMHCp file with a text editor (e.g., emacs) and put between the "" of lib_path="YOUR PATH TO MixMHCp1.0/lib FOLDER" the absolute path of the MixMHCp1.0/lib directory.
+3) Open MixMHCp file with a text editor (e.g., emacs) and put between the "" of lib_path="YOUR PATH TO MixMHCp1.1/lib FOLDER" the absolute path of the MixMHCp1.1/lib directory.
 
 4) Put the MixMHCp executable in your PATH.
 
-5) On Linux, you need to recompile the lib/MixMHCp.cc file (for instance: g++ lib/MixMHCp.cc -o lib/MixMHCp.x)
+5) On Linux, you need to recompile the MixMHCp.cc file (for instance: g++ lib/MixMHCp.cc -o lib/MixMHCp.x)
 
 
 - Running MixMHCp:
@@ -39,12 +49,16 @@ MixMHCp -i INPUT_FILE -o OUTPUT_DIR -m MAX_MOTIF
 Example: MixMHCp -i input.fa -o output -m 6
 
 MixMHCp requires as input fasta files with all peptides of the same length, no gaps and only amino acids.
-Make sure your input file and paths names do not contain blank spaces or weird characters
+You can also use txt files with peptide sequences (lines starting with '>' are simply not considered).
+Make sure your input file and paths names do not contain blank spaces or weird characters.
+Make sure your input files are text files and do not include any rich formatting (e.g., save Excel files as .txt files).
 
 - Test MixMHCp:
 
-Make sure you are in the MixMHCp1.0 directory. Run the command: ./MixMHCp -i test/test.fa -o test/out -m 6
+Make sure you are in the MixMHCp1.1 directory.
+Run the command: ./MixMHCp -i test/test.fa -o test/out -m 6
 Apart from path names, your output should be similar to what you have in test/out_compare directory
+The test file represents HLA-I ligands identified in Bassani-Sternberg et al. MCP 2015 for HCC1143 sample.
 
 
 
@@ -52,7 +66,7 @@ Apart from path names, your output should be similar to what you have in test/ou
 - Other informations:
 #####################
 
-1) The predicted number of motifs is given in KLD/best_ncl.txt. In addition, we also provide the KLD score, as defined in Andreatta et al. Bioinformatics 2013.
+1) The predicted number of motifs is given in KLD/best_ncl.txt. In addition, we also provide the KLD score in KLD/KLD.txt, as defined in Andreatta et al. Bioinformatics 2013. However, the optimal number of motifs does not necesseraly correspond to the maximal KLD score.
 
 2) MixMHCp should only be applied on pre-aligned peptides and so far does not include any alignment step.
 
@@ -64,10 +78,8 @@ Apart from path names, your output should be similar to what you have in test/ou
 
 6) The PWMs provided as output correspond to those optimally describing the data. They do not necessarily correspond to the best predictors, since they do not incorporate any renormalization by the background frequencies and are build with a relatively low random count. In general, for making predictions, it is better to train a predictor based on the peptides themselves (for instance by clustering the peptides based on the responsibility values).
 
-7) The optimal number of motifs predicted by the algorithm (Bassani-Sternberg et al JI 2016) is given in KLD/best_ncl.txt file. However, in many cases it is worth going manually through the results of the motif deconvolution for different number of motifs, since motifs supported by less data (e.g., HLA-C alleles in HLA peptidomics) are more difficult to detect. Importantly, determining the optimal number of motifs is a known limitation of any clustering algorithm and often requires manual checking of the results.
+7) The optimal number of motifs predicted by the algorithm (Bassani-Sternberg et al. JI 2016) is given in KLD/best_ncl.txt file. However, in many cases it is worth going manually through the results of the motif deconvolution for different number of motifs, since motifs supported by less data (e.g., HLA-C alleles in HLA peptidomics) are more difficult to detect. Importantly, determining the optimal number of motifs is a known limitation of any clustering algorithm and often requires manual checking of the results.
 
 8) Some users reported a bug with El Capitan when calling java from the terminal. The recommanded fix can be found for instance here: http://stackoverflow.com/questions/34201990/unsupported-major-minor-version-on-mac-os-x-el-capitan/34201991#34201991. Alternatively you may use the Seq2Logo option.
 
-9) The bias file can be manually defined by listing biases values in exactly the same order as the alphabet (each value should be entered on a new line), or defined as the Uniprot background frequency (the latter only applies for the standard amino acid alphabet). However, we suggest **not** to use any bias file, as results do not seem to improve.
-
-10) The -a option allows to define your own alphabet, which can be very useful, for instance if working with modified peptides. Characters that are allowed are "ACDEFGHIKLMNPQRSTVWYacdefghiklmnpqrstvwy". By default, MixMHCp uses the standard amino acid alphabet with capital letters.
+9) Expanded amino acid alphabet can be provided with the -a option (e.g. -a ACDEFGHIKLMNPQRSTVWYsty for phospho peptides). This allows you to use small letters for modified or non-natural amino acids. Make sure that all characters used in your input sequences are listed in the alphabet (this will determine the size of the alphabet considered by the model). By default, the 20 amino acids 'ACDEFGHIKLMNPQRSTVWY' are assumed.

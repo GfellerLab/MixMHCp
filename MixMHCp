@@ -12,7 +12,7 @@
 # basis, without warranty of any kind.
 #
 # FOR-PROFIT USERS
-# If you plan to use MixMHCp (version 1.0) in any for-profit
+# If you plan to use MixMHCp (version 1.1) in any for-profit
 # application, you are required to obtain a separate license.
 # To do so, please contact eauffarth@licr.org or lfoit@licr.org at the Ludwig Institute for  Cancer Research Ltd.
 #
@@ -21,7 +21,8 @@
 
 
 # Set the resource location. This has to be manually done on your machine
-lib_path="YOUR PATH TO MixMHCp1.0/lib FOLDER"
+lib_path="/Users/davidgfeller/Research/LICR/Research/Immunopeptidomics/Full_package/MixMHCp1.1/lib"
+
 
 usage="Usage: MixMHCp -i INPUT -o OUTPUT -m MAX_MOTIFS"
 
@@ -38,14 +39,14 @@ if [[ "$1" == "--help" || "$1" == "-h" ]]; then
 cat <<END
 $usage
 Mandatory parameters:
-  -i, --input             Absolute or relative path to the input file or a
-                          folder containing input files
+  -i, --input             Absolute or relative path to the input file (fasta format or list of peptides)
   -o, --output            Specify a location for the output
 
 
 Optional parameters:
   -m, --max-pwms          Maximum number of PWMs (default: 6, max: 20)
   -b, --bias              Specific a residue bias file (default: none, U for uniprot based background frequencies, otherwise a file)
+  -a, --alphabet          Specify your alphabet (default: ACDEFGHIKLMNPQRSTVWY, characters allowed: ACDEFGHIKLMNPQRSTVWYacdefghiklmnpqrstvwy)
 
 Options:
 
@@ -70,6 +71,7 @@ while [ $# -gt 0 ]; do
 		-i | --input) input=$2; shift 2;;
 		-o | --output) output=$2; shift 2;;
 		-m | --max-pwms) maxpwms=$2; shift 2;;
+		-a | --alphabet) alphabet=$2; shift 2;;
 		-k | --no-clean) noclean=-tm; shift 1;;
 		-b | --bias) bias=$2; shift 2;;
 		-l | --logo) logo=$2; shift 2;;
@@ -88,12 +90,21 @@ fi
 
 if [ -n "$bias" ]; then
 	bias_file="-b $bias";
+else
+    bias_file="-b 0";
 fi
+    
 
 if [ -n "$name" ]; then
     name_file="-n $name";
 else
     name_file="-n Peptides";
+fi
+
+if [ -n "$alphabet" ]; then
+    alphabet_command="-al $alphabet";
+else
+    alphabet_command="-al ACDEFGHIKLMNPQRSTVWY";
 fi
 
 if [ -n "$logo_type" ]; then
@@ -119,5 +130,5 @@ output=$output/
 
 lib_dir=`perl -e 'use Cwd "abs_path";print abs_path(shift)' $lib`/
 
-perl $lib_dir/run_MixMHCp.pl $lib_dir $noclean -m $maxpwms $bias_file $input -o $output -l $logo $name_file $logo_type_command
+perl $lib_dir/run_MixMHCp.pl $lib_dir $noclean -m $maxpwms $bias_file $input -o $output -l $logo $name_file $logo_type_command $alphabet_command
 

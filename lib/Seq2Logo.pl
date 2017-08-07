@@ -1,4 +1,3 @@
-#!/usr/bin/perl
 
 #Create the Seq2Logo logos
 #This is useful to create the logos with Seq2Logo.

@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!usr/bin/perl
 
 ############
 # Written by David Gfeller
@@ -27,7 +27,7 @@ use strict;
 use File::Copy;
 
 
-my ($verbose, $output, $input, $dir, $outdir, $temp_keep, $help, $maxncomp, $logo, $comp, $bs, $bias, $name, $logo_type);  
+my ($verbose, $output, $input, $dir, $outdir, $temp_keep, $maxncomp, $logo, $comp, $bs, $bias, $name, $logo_type, $alphabet);  
 
 my $MixMHCp_dir = $ARGV[0];
 
@@ -38,9 +38,9 @@ GetOptions ("i=s" => \$input,    # input file name
 	    "l=s" => \$logo,   # Decide if the logos should be drawn
             "m=i" => \$maxncomp,# maximal number of PWMs
             "lt=s" => \$logo_type,# type of logo
-            "h" => \$help,  	 # Help
             "tm" => \$temp_keep, # Don't delete temporary files
             "n=s" => \$name,
+            "al=s" => \$alphabet,
 	    "v"  => \$verbose);  # verbose
 
 if($maxncomp>20){
@@ -55,11 +55,9 @@ if (!($input eq "")){
     exit(10);
 }
 
-## Print help page
-if ($help == 1){
-	system("cat ".$MixMHCp_dir."help_page.txt");
-	exit;
-}
+#Check the alphabet
+&check_alphabet($alphabet);
+
 
 ## Check whether neither input nor directory are specified
 if (($input eq "") ){
@@ -67,8 +65,7 @@ if (($input eq "") ){
 	exit;
 }
 
-
-my @remove_files=qw(project.txt pipeline.log EM_project.txt blosum62.txt logos.html);
+my @remove_files=qw(project.txt pipeline.log EM_project.txt logos.html);
 my @remove_dir=qw(alignment KLD Multiple_PWMs responsibility logos_html Seq2Logo LoLa logos);
 
 my $f;
@@ -83,16 +80,24 @@ foreach $f (@remove_dir){
     }
 }
 
-system("cp $MixMHCp_dir/blosum62.txt $outdir"."/blosum62.txt");
 
 $bs=0;
-if (-e $bias){
+if ($bias ne 0 && $bias ne "U"){
+
+    &check_bias($bias, $alphabet);
     system("cp ".$bias." $outdir"."/bias.txt");
     $bs=2;
+    
 } elsif ($bias eq "U"){
     $bs=1;
+    if($alphabet ne "ACDEFGHIKLMNPQRSTVWY"){
+	print "Impossible to use Uniprot background frequencies with non amino acid alphabet\n";
+	exit;
+    }
+   
 }
 
+######## Here we will need to check the bias files, to make sure they are consistent with the alphabet #############
 	    
 system("mkdir -p ".$outdir);
 system("mkdir -p ".$outdir."/data");
@@ -111,12 +116,9 @@ my @pep=();
 open IN, $input, or die;
 while(my $l=<IN>){
     if(substr($l, 0, 1) ne ">"){
-	print "Invalid input format (not fasta file): $l\n";
+	$l =~ s/\r?\n$//;
+        push @pep, $l;
     }
-    $l=<IN>;
-    $l =~ s/\r?\n$//;
-    #chomp($l);
-    push @pep, $l;
 }
 close IN;
 
@@ -139,8 +141,8 @@ foreach $p (@pep){
 close OUT;
 
 
-my $command = "0 0 ".$maxncomp." -d ".$outdir." -b U";
-
+my $command = "0 0 ".$maxncomp." -d ".$outdir." -b $bs -a ".$alphabet;
+#print "$command\n";
 print_and_log("Running MixMHCp..."."\n");
 my $exit_status = system($MixMHCp_dir."MixMHCp.x $command >> ".$outdir."pipeline.log 2>> ".$outdir."pipeline.log");
 if (!($exit_status == 0)){
@@ -149,12 +151,12 @@ if (!($exit_status == 0)){
 }
 
 
-
 #my $logo="Seq2Logo";  #This is not working well on the GUI because the path to Seq2Logo and gs cannot be found.
 #Moreover, in case of gaps, Seq2Logo.py treats them as no sequences... so this works only well if we do not align the sequences
 
 if($logo==1){
 
+    #Here we will need to create a specialized viewer for a given alphabet
    
     my $input_type = "Protein";
     if($logo_type eq "LoLa"){
@@ -178,7 +180,6 @@ if($logo==1){
     
 }
 
-system("rm $outdir/blosum62.txt");
 
 
 if ($temp_keep == 0){
@@ -220,8 +221,13 @@ sub print_and_log{
 sub check_input{
 
 
-    my %aa=("A", 1, "C", 2, "D", 3, "E", 4, "F", 5, "G", 6, "H", 7, "I", 8, "K", 9, "L", 10, "M", 11, "N", 12, "P", 13, "Q", 14, "R", 15, "S", 16, "T", 17, "V", 18, "W", 19, "Y", 20);
-
+    my %aa=();
+    my @al=split('', $alphabet);
+    my $s;
+    foreach $s (@al){
+	$aa{$s}=1;
+    }
+    
     my @pep=@_;
     
     my $p;
@@ -241,11 +247,58 @@ sub check_input{
 	@a=split('', $p);
 	foreach $s (@a){
 	    if(!exists $aa{$s}){
-		print_and_log("Unknown amino acid $s in $p\n");
+		print_and_log("Unknown letter in alphabet: $s in $p\n");
 		$exit_pep=$s;
 		last;
 	    }
 	}
     }
     return($exit_pep);
+}
+
+sub check_alphabet{
+
+    my $s;
+    
+    my @allowed=qw(A C D E F G H I K L M N P Q R S T V W Y a c d e f g h i k l m n p q r s t v w y);
+    my %allowed_alphabet=();
+    foreach $s (@allowed){
+	$allowed_alphabet{$s}=1;
+    }
+    
+    my @al=split('', $_[0]);
+   
+    
+    foreach $s (@al){
+	if(!exists $allowed_alphabet{$s}){
+	    print_and_log("Letter not allowed in alphabet: $s\n");
+	    die;
+	}
+    }
+}
+
+sub check_bias{
+
+    my $l;
+    my $c=0;
+    print "$_[0]\n";
+    open IN, "$_[0]", or die "Bias file $_[0] not found\n";
+    while($l=<IN>){
+	$l =~ s/\r?\n$//;
+	if($l =~ /^[0-9,.E]+$/ ){
+	    if($l<=0){
+		print_and_log("Invalid bias values: $l\n");
+		exit
+	    }
+	} else {
+	    print_and_log("Invalid bias values: $l\n");
+	    exit
+	}
+	$c++;
+    }
+    if($c ne length($_[1])){
+        print_and_log("Invalid bias file (not the same number of entries as the alphabet).\n");
+	exit;
+    }
+    
 }

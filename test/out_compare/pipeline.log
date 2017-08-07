@@ -3,19 +3,19 @@ Processing input files...
 Running MixMHCp...
 
 MixMHCp input command line:
-/Users/davidgfeller/Research/LICR/Research/Immunopeptidomics/Full_package/MixMHCp/source/MixMHCp1.0/lib/MixMHCp.x 0 0 6 -d /Users/davidgfeller/Research/LICR/Research/Immunopeptidomics/Full_package/MixMHCp/source/MixMHCp1.0/test/out_compare/ -b U 
+/Users/davidgfeller/Research/LICR/Research/Immunopeptidomics/Full_package/MixMHCp1.1/source/MixMHCp1.1/lib/MixMHCp.x 0 0 6 -d /Users/davidgfeller/Research/LICR/Research/Immunopeptidomics/Full_package/MixMHCp1.1/source/MixMHCp1.1/test/out_compare/ -b 0 -a ACDEFGHIKLMNPQRSTVWY 
 
 Alignment folder:
-/Users/davidgfeller/Research/LICR/Research/Immunopeptidomics/Full_package/MixMHCp/source/MixMHCp1.0/test/out_compare//data
+/Users/davidgfeller/Research/LICR/Research/Immunopeptidomics/Full_package/MixMHCp1.1/source/MixMHCp1.1/test/out_compare//data
 Flat background
 Number of peptides: 1989
 Generating logos...
 
 Unique?: false
-Loading data for: /Users/davidgfeller/Research/LICR/Research/Immunopeptidomics/Full_package/MixMHCp/source/MixMHCp1.0/test/out_compare//project.txt
+Loading data for: /Users/davidgfeller/Research/LICR/Research/Immunopeptidomics/Full_package/MixMHCp1.1/source/MixMHCp1.1/test/out_compare//project.txt
 Generating logos:
 	LoLa_1-1989
-Loading data for: /Users/davidgfeller/Research/LICR/Research/Immunopeptidomics/Full_package/MixMHCp/source/MixMHCp1.0/test/out_compare//EM_project.txt
+Loading data for: /Users/davidgfeller/Research/LICR/Research/Immunopeptidomics/Full_package/MixMHCp1.1/source/MixMHCp1.1/test/out_compare//EM_project.txt
 Generating logos:
 	LoLa_2_1-1183
 	LoLa_2_2-806
