@@ -1,0 +1,42 @@
+Processing input files...
+
+Running MixMHCp...
+
+MixMHCp input command line:
+/Users/davidgfeller/Research/LICR/Research/Immunopeptidomics/Full_package/MixMHCp/source/MixMHCp1.0/lib/MixMHCp.x 0 0 6 -d /Users/davidgfeller/Research/LICR/Research/Immunopeptidomics/Full_package/MixMHCp/source/MixMHCp1.0/test/out_compare/ -b U 
+
+Alignment folder:
+/Users/davidgfeller/Research/LICR/Research/Immunopeptidomics/Full_package/MixMHCp/source/MixMHCp1.0/test/out_compare//data
+Flat background
+Number of peptides: 1989
+Generating logos...
+
+Unique?: false
+Loading data for: /Users/davidgfeller/Research/LICR/Research/Immunopeptidomics/Full_package/MixMHCp/source/MixMHCp1.0/test/out_compare//project.txt
+Generating logos:
+	LoLa_1-1989
+Loading data for: /Users/davidgfeller/Research/LICR/Research/Immunopeptidomics/Full_package/MixMHCp/source/MixMHCp1.0/test/out_compare//EM_project.txt
+Generating logos:
+	LoLa_2_1-1183
+	LoLa_2_2-806
+	LoLa_3_1-373
+	LoLa_3_2-777
+	LoLa_3_3-839
+	LoLa_4_1-480
+	LoLa_4_2-373
+	LoLa_4_3-764
+	LoLa_4_4-372
+	LoLa_5_1-762
+	LoLa_5_2-87
+	LoLa_5_3-368
+	LoLa_5_4-347
+	LoLa_5_5-425
+	LoLa_6_1-87
+	LoLa_6_2-425
+	LoLa_6_3-368
+	LoLa_6_4-683
+	LoLa_6_5-344
+	LoLa_6_6-82
+Done.
+Generating HTML tables document...
+

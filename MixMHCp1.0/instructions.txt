@@ -1,0 +1,71 @@
+
+############
+# Written by David Gfeller, with help from TaeHyung Kim, Marc S. Tyndel for the logo visualization part with LoLa.
+#
+# For any question, please contact david.gfeller@unil.ch
+#
+# To cite MixMHCp, please refer to Bassani-Sternberg M and Gfeller D*, J. Immunol. (2016)
+#
+# MixMHCp can be used freely by academic groups for non-commercial purposes (see license).
+# The product is provided free of charge, and, therefore, on an "as is"
+# basis, without warranty of any kind.
+#
+# FOR-PROFIT USERS
+# If you plan to use MixMHCp (version 1.0) in any for-profit
+# application, you are required to obtain a separate license.
+# To do so, please contact eauffarth@licr.org or lfoit@licr.org at the Ludwig Institute for  Cancer Research Ltd.
+#
+# Copyright (2016) David Gfeller
+############
+
+MixMHCp is to be run from the terminal (command-line) on Mac and Linux. It requires perl, java and C++ scripts to run on your machine.
+
+- Installing MixMHCp:
+
+1) Create a directory where to install MixMHCp. Please avoid blank space or non-canonical characters in your path. 
+
+2) Decompress MixMHCp1.0.tar.gz in this directory.
+
+3) Open MixMHCp file with a text editor (e.g., emacs) and replace resources_location=YOUR_PATH by the location of the MixMHCp1.0/lib directory.
+
+4) Put the MixMHCp executable in your PATH.
+
+
+- Running MixMHCp:
+
+MixMHCp -i INPUT_FILE -o OUTPUT_DIR -m MAX_MOTIF
+Example: MixMHCp -i input.fa -o output -m 6
+
+MixMHCp requires as input fasta files with all peptides of the same length, no gaps and only amino acids.
+Make sure your input file and paths names do not contain blank spaces or weird characters
+
+- Test MixMHCp:
+
+Make sure you are in the MixMHCp1.0 directory. Run the command: ./MixMHCp -i test/test.fa -o test/out -m 6
+Apart from path names, your output should be similar to what you have in test/out_compare directory
+
+
+
+#####################
+- Other informations:
+#####################
+
+1) The predicted number of motifs is given in KLD/best_ncl.txt. In addition, we also provide the KLD score, as defined in Andreatta et al. Bioinformatics 2013.
+
+2) MixMHCp should only be applied on pre-aligned peptides and so far does not include any alignment step.
+
+3) The responsibility values provide information of how much each peptide contributes to each motif. These values can then be used to cluster the peptides and the users can choose different threshold (e.g., any number, or the maximal value).
+
+4) By default, the logos are plotted with the LoLa software, that is included in the package (http://baderlab.org/Software/LOLA). To plot logos with Seq2Logo (Martin Christen Frolund Thomsen; Morten Nielsen, Nucleic Acids Research 2012; 40 (W1): W281-W287), you need to have the proper license (http://www.cbs.dtu.dk/biotools/Seq2Logo/) and have Seq2Logo in your path and add in the command line '-lt Seq2Logo'. You also need 'gs' (Ghostscript) to work on your machine.
+
+5) If you use Seq2Logo to generate the logos, be aware that the logos do not include any random count or background frequency corrections. This is ideal to explore what is in your data, but may not exactly correspond to the motifs used to build predictors.
+
+6) The PWMs provided as output correspond to those optimally describing the data. They do not necessarily correspond to the best predictors, since they do not incorporate any renormalization by the background frequencies and are build with a relatively low random count. In general, for making predictions, it is better to train a predictor based on the peptides themselves (for instance by clustering the peptides based on the responsibility values).
+
+7) The optimal number of motifs predicted by the algorithm (Bassani-Sternberg et al JI 2016) is given in KLD/best_ncl.txt file. However, in many cases it is worth going manually through the results of the motif deconvolution for different number of motifs, since motifs supported by less data (e.g., HLA-C alleles in HLA peptidomics) are more difficult to detect. Importantly, determining the optimal number of motifs is a known limitation of any clustering algorithm and often requires manual checking of the results.
+
+8) Some users reported a bug with El Capitan when calling java from the terminal. The recommanded fix can be found for instance here: http://stackoverflow.com/questions/34201990/unsupported-major-minor-version-on-mac-os-x-el-capitan/34201991#34201991. Alternatively you may use the Seq2Logo option.
+
+9) The bias file can be manually defined by listing biases values in exactly the same order as the alphabet (each value should be entered on a new line), or defined as the Uniprot background frequency (the latter only applies for the standard amino acid alphabet). However, we suggest **not** to use any bias file, as results do not seem to improve.
+
+10) The -a option allows to define your own alphabet, which can be very useful, for instance if working with modified peptides. Characters that are allowed are "ACDEFGHIKLMNPQRSTVWYacdefghiklmnpqrstvwy". By default, MixMHCp uses the standard amino acid alphabet with capital letters.
