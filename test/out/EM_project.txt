@@ -1,3 +1,0 @@
-#ProjectFile
-LoLa/LoLa_2_1.txt
-LoLa/LoLa_2_2.txt
