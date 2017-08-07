@@ -21,8 +21,7 @@
 
 
 # Set the resource location. This has to be manually done on your machine
-#lib_path="YOUR PATH TO MixMHCp1.1/lib FOLDER"
-lib_path="/Users/davidgfeller/Research/LICR/Research/Immunopeptidomics/Full_package/MixMHCp1.1/source/MixMHCp1.1/lib/"
+lib_path="YOUR PATH TO MixMHCp1.1/lib FOLDER"
 
 
 usage="Usage: MixMHCp -i INPUT -o OUTPUT -m MAX_MOTIFS"
