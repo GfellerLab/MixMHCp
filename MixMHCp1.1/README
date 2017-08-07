@@ -39,6 +39,8 @@ MixMHCp is to be run from the terminal (command-line) on Mac and Linux. It requi
 
 4) Put the MixMHCp executable in your PATH.
 
+5) On Linux, you need to recompile the MixMHCp.cc file (for instance: g++ lib/MixMHCp.cc -o lib/MixMHCp.x)
+
 
 - Running MixMHCp:
 
