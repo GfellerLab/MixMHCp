@@ -1,8 +1,7 @@
 Usage: perl run_MixMHC.pl -i input_file -o output_dir
 
 Options:
-  -i        Input filename (do not use with -d)
-  -d        Directory containing input files (do not use with -i)
+  -i        Input filename
   -o        Output directory (Default: "table")
   -n	     Name of the output
   -pdf      Generate PDF
