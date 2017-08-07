@@ -24,6 +24,7 @@
 
 Up to 20 modified or non-natural amino acids are allowed. Please use small letters 'acdefghiklmnpqrstvwy'.
 If you use this option, please indicate the complete alphabet after the -a option in the command line.
+Note: Each letter is treated as a distinct amino acid in the calculation, but capital and small letters are merged in the logos (work in progress).
 
 ############
 
