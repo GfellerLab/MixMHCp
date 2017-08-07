@@ -1,0 +1,194 @@
+#!usr/bin/perl
+
+use strict;
+
+my $input = $ARGV[0];
+my $file = $ARGV[1];
+my $type = $ARGV[2];
+my $outdir = $ARGV[3];
+my $MUSI_dir = $ARGV[4];
+
+my @name;
+if ($input eq "file"){
+	$name[0] = $file;
+} elsif ($input eq "dir"){
+	@name = <$file/*>;
+    print $file."\t".scalar(@name)."\n";
+    for (my $i = 0; $i < scalar(@name); $i++){
+        my $tmp_name = $name[$i];
+        while(index($tmp_name, "/") >= 0){
+            $tmp_name = substr($tmp_name, index($tmp_name, "/")+1);	
+        }
+        if (substr($tmp_name, 0, 1) eq "."){
+            delete $name[$i];
+        }
+    } 
+} else {
+	print "INPUT TYPE WRONG!"."\n";	
+}
+
+my @fgap;
+my @fgp;
+
+system("mkdir -p ".$outdir."alignment");
+my $gap = 2.0;
+my $ep_gap = 0.123;
+my $len_restriction = 4/3;
+#my $egap = 1.0;
+#my $maxiters = 10;
+if ($type eq "DNA"){
+    $gap = 1.0;
+    $ep_gap = 0;
+    $len_restriction = 3;
+}
+for (my $i = 0; $i < scalar(@name); $i++){
+    print $name[$i]."\n";
+	my $run_count = 0;
+    
+	my @a=split('\.', $name[$i]);
+	my $la=scalar @a;
+	if($la > 1){ 
+        $a[$la-1]="fa"; 
+	} 
+	else{ 
+        push @a, "fa"; 
+	} 
+    
+	my $output=$a[0]; 
+	for(my $j = 1; $j < scalar @a; $j++){ 
+        $output=$output.".".$a[$j]; 
+	}
+	
+	while(index($output, "/") >= 0){
+		$output = substr($output, index($output, "/")+1);
+	}
+	$output =~ s/-/_/g;
+    
+    
+	my $last = substr($name[$i], length($name[$i])-1, 1);
+	my $num_seq = `grep -c ">" $name[$i]`;
+	if (($last eq ".") or ($num_seq <= 10)){
+		next;
+	}
+    
+	my %all_seq;
+	my $name = "";
+	my $index = 0;
+	open(IN, "<$name[$i]");
+	while(my $line = <IN>){
+		chomp($line);
+		if (substr($line, 0, 1) eq ">"){
+			$name = substr($line, 1)."_".$index;
+			$all_seq{$name} = "";
+			$index++;
+		} else {
+			$all_seq{$name} = $all_seq{$name}.$line;
+		}
+	}
+	close(IN);
+	
+	my @sorted_seq = sort { $all_seq{$a} cmp $all_seq{$b}} keys %all_seq;
+    my $seq_len = length($all_seq{$sorted_seq[0]});
+	my $num_seq = scalar(@sorted_seq);
+	open(OUT, ">".$outdir."nada.fa");
+	for (my $j = 0; $j < $num_seq; $j++){
+		$sorted_seq[$j] =~ s/\>//g;
+		print OUT ">".$sorted_seq[$j]."\n";
+		print OUT $all_seq{$sorted_seq[$j]}."\n";
+	}
+	close(OUT);
+	system_and_print("mafft --quiet --op $gap --ep $ep_gap $outdir/nada.fa > $outdir/nada_aligned.fa");
+	$run_count++;
+	my @nada;
+	
+    
+	open(IN, "<".$outdir."nada_aligned.fa");
+	while(my $line = <IN>){
+		chomp($line);
+		if (!($line =~ m/>/)){
+			push(@nada, $line);
+		}
+	}
+	close(IN);
+    
+	my $d1 = scalar(@nada);
+	my $d2 = length($nada[0]);
+	my $gp = $d1;
+	my $it = 0;
+    my $increment = 1;
+    if ($type eq "DNA"){
+        $increment = 0.5;
+    }
+	while(($gp > 0.01*$d1) and ($d2 >= (($len_restriction)*$seq_len)) and ($it < 8)){
+		$gp = 0;
+		for (my $j1 = 0; $j1 < $d1; $j1++){
+			my $tgp = 0;
+			my $cur_line = $nada[$j1];
+			my @nada_cur = split("", $cur_line);
+			for (my $j2 = 1; $j2 < $d2-1; $j2++){
+				if (($nada_cur[$j2] eq "-") and ($tgp == 0)){
+					my $s1 = 0;
+					my $s2 = 0;
+					for (my $j3 = $j2-2; $j3 > -1; $j3--){
+						if (!($nada_cur[$j3] eq "-")){
+							$s1 = 1;
+						}
+					}
+					for (my $j3 = $j2; $j3 < $d2; $j3++){
+						if (!($nada_cur[$j3] eq "-")){
+							$s2 = 1;
+						}
+					}
+					if ($s1 == 1 and $s2 == 1){
+						$tgp = 1;	
+					}	
+				}	
+			}
+			if ($tgp == 1){
+				$gp++;
+			}
+		}
+		if (($gp > 0.01*$d1) or ($d2 >= (($len_restriction)*$seq_len))){	
+            if ($gp > 0.01*$d1){
+                $gap = $gap + 1;
+                print "OP_GAP"."\t".$gap."\n";
+            }
+            if ($d2 >= (($len_restriction)*$seq_len)){
+                $ep_gap = $ep_gap + 0.04;
+                print "EP_GAP"."\t".$ep_gap."\n";
+            }
+			open(IN, "<".$outdir."nada_aligned.fa");
+			while(my $line = <IN>){
+				chomp($line);
+				if (!($line =~ m/>/)){
+					shift(@nada);
+					push(@nada, $line);
+				}
+			}
+			close(IN);
+			system_and_print("mafft --quiet --op $gap --ep $ep_gap $outdir/nada.fa > $outdir/nada_aligned.fa");
+			$run_count++;
+            
+			# Recount
+			open(IN, "<".$outdir."nada_aligned.fa");
+			while(my $line = <IN>){
+				chomp($line);
+				if (!($line =~ m/>/)){
+					push(@nada, $line);
+				}
+			}
+			close(IN);
+			$d1 = scalar(@nada);
+			$d2 = length($nada[0]);
+		}
+		$it++; 
+	}
+	system("cp ".$outdir."nada_aligned.fa ".$outdir."alignment/".$output);
+	system("rm -f $outdir/nada_aligned.fa $outdir/nada.fa");
+	print "MAFFT: File: $output, Runs: $run_count Gap: $gap EP_GAP: $ep_gap"."\n";
+}
+
+sub system_and_print{
+	print($_[0]);
+	system($_[0]);
+}
