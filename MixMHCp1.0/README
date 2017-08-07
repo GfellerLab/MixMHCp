@@ -26,11 +26,11 @@ MixMHCp is to be run from the terminal (command-line) on Mac and Linux. It requi
 
 2) Decompress MixMHCp1.0.tar.gz in this directory.
 
-3) Open MixMHCp file with a text editor (e.g., emacs) and replace resources_location=YOUR_PATH by the location of the MixMHCp1.0/lib directory.
+3) Open MixMHCp file with a text editor (e.g., emacs) and put between the "" of lib_path="YOUR PATH TO MixMHCp1.0/lib FOLDER" the absolute path of the MixMHCp1.0/lib directory.
 
 4) Put the MixMHCp executable in your PATH.
 
-5) On Linux, you need to recompile the MixMHCp.cc file (for instance: g++ lib/MixMHCp.cc -o lib/MixMHCp.x)
+5) On Linux, you need to recompile the lib/MixMHCp.cc file (for instance: g++ lib/MixMHCp.cc -o lib/MixMHCp.x)
 
 
 - Running MixMHCp:
