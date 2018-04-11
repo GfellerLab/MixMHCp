@@ -1,28 +1,29 @@
 #!/bin/bash
 
 ############
-# Written by David Gfeller, with help from TaeHyung Kim, Marc S. Tyndel for the logo visualization part with LoLa.
+# Written by David Gfeller, with help from TaeHyung Kim and Marc S. Tyndel for the logo visualization part with LoLa.
 #
 # For any question, please contact david.gfeller@unil.ch
 #
-# To cite MixMHCp, please refer to Bassani-Sternberg M and Gfeller D*, J. Immunol. (2016)
+# To cite MixMHCp2.0, please refer to:
+# - Bassani-Sternberg M and Gfeller D, Unsupervised HLA Peptidome Deconvolution Improves Ligand Prediction Accuracy and Predicts Cooperative Effects in Peptide-HLA Interactions. J. Immunol. (2016)
+# - Gfeller D et al. Peptide length distriution and multiple specificity in HLA-I ligands, bioRxiv (2018).
 #
 # MixMHCp can be used freely by academic groups for non-commercial purposes (see license).
 # The product is provided free of charge, and, therefore, on an "as is"
 # basis, without warranty of any kind.
 #
 # FOR-PROFIT USERS
-# If you plan to use MixMHCp (version 1.1) in any for-profit
+# If you plan to use MixMHCp (version 2.0) in any for-profit
 # application, you are required to obtain a separate license.
 # To do so, please contact eauffarth@licr.org or lfoit@licr.org at the Ludwig Institute for  Cancer Research Ltd.
 #
-# Copyright (2016) David Gfeller
+# Copyright (2018) David Gfeller
 ############
 
 
 # Set the resource location. This has to be manually done on your machine
 lib_path="YOUR PATH TO MixMHCp1.1/lib FOLDER"
-
 
 usage="Usage: MixMHCp -i INPUT -o OUTPUT -m MAX_MOTIFS"
 
@@ -45,15 +46,17 @@ Mandatory parameters:
 
 Optional parameters:
   -m, --max-pwms          Maximum number of PWMs (default: 6, max: 20)
-  -b, --bias              Specific a residue bias file (default: none, U for uniprot based background frequencies, otherwise a file)
+  -b, --bias              Specific a residue bias file (default: uniprot based background frequencies, otherwise specifiy a file)
   -a, --alphabet          Specify your alphabet (default: ACDEFGHIKLMNPQRSTVWY, characters allowed: ACDEFGHIKLMNPQRSTVWYacdefghiklmnpqrstvwy)
 
 Options:
 
-  -k, --no-clean          Keep temporary files
-  -l, --logo              Plot the logos
-  -lt, --logo             Logo types (either LoLa or Seq2Logo)
+  -k, --no-clean          Keep temporary files (default: 0)
+  -l, --logo              Plot the logos (default: 1)
+  -lt, --logo             Logo types (either LoLa or Seq2Logo, default: LoLa)
   -n, --name              Name of the output (only showing in the html file)
+  -lc, --length_core      Length of the core (default: 9). Peptides should not be longer than 10+lc
+  -tr, --trash            Use a trash cluster (default: 1)
 
 END
 	exit 0;
@@ -62,8 +65,9 @@ fi
 # Defaults
 output=./
 maxpwms=6
-
+lcore=9
 logo=1
+trash=1
 
 # Parse flags
 while [ $# -gt 0 ]; do
@@ -77,13 +81,15 @@ while [ $# -gt 0 ]; do
 		-l | --logo) logo=$2; shift 2;;
 		-lt | --logo_type) logo_type=$2; shift 2;;
 		-n | --name) name=$2; shift 2;;
+		-lc | --length_core) lcore=$2; shift 2;;
+		-tr | --trash) trash=$2; shift 2;;
 		*) shift 1;;
 	esac
 done
 
 # Check for mandatory parameters
 if	! [[ -n "$input" ]]; then 
-	echo Try: "musi --help"
+	echo Try: "MixMHCp --help"
 	echo $usage;
 	exit 1;
 fi
@@ -91,7 +97,7 @@ fi
 if [ -n "$bias" ]; then
 	bias_file="-b $bias";
 else
-    bias_file="-b 0";
+    bias_file="-b U";
 fi
     
 
@@ -108,7 +114,12 @@ else
 fi
 
 if [ -n "$logo_type" ]; then
-    logo_type_command="-lt $logo_type";
+    if [ $logo_type = "LoLa" ] || [ $logo_type = "Seq2Logo" ]; then
+	logo_type_command="-lt $logo_type";
+    else
+	echo "Invalid type of logos (should be either LoLa or Seq2Logo)"
+	
+    fi
 else
     logo_type_command="-lt LoLa";
 fi
@@ -130,5 +141,6 @@ output=$output/
 
 lib_dir=`perl -e 'use Cwd "abs_path";print abs_path(shift)' $lib`/
 
-perl $lib_dir/run_MixMHCp.pl $lib_dir $noclean -m $maxpwms $bias_file $input -o $output -l $logo $name_file $logo_type_command $alphabet_command
+
+perl $lib_dir/run_MixMHCp.pl $lib_dir $noclean -m $maxpwms $bias_file $input -o $output -l $logo $name_file $logo_type_command $alphabet_command -lc $lcore -tr $trash
 

@@ -27,7 +27,7 @@ use strict;
 use File::Copy;
 
 
-my ($verbose, $output, $input, $dir, $outdir, $temp_keep, $maxncomp, $logo, $comp, $bs, $bias, $name, $logo_type, $alphabet);  
+my ($verbose, $output, $input, $dir, $outdir, $temp_keep, $maxncomp, $logo, $comp, $bs, $bias, $name, $logo_type, $alphabet, $lcore, $trash);  
 
 my $MixMHCp_dir = $ARGV[0];
 
@@ -41,11 +41,18 @@ GetOptions ("i=s" => \$input,    # input file name
             "tm" => \$temp_keep, # Don't delete temporary files
             "n=s" => \$name,
             "al=s" => \$alphabet,
+	    "lc=i" => \$lcore,
+	    "tr=i" => \$trash,
 	    "v"  => \$verbose);  # verbose
 
 if($maxncomp>20){
     $maxncomp=20;
 }
+
+my $naa_min=100;
+my $naa_max=0;
+
+my $run_all=1; # Set to 0 if you do not want to run the C++ code.
 
 #Check if the filename contains bad characters
 if (!($input eq "")){
@@ -65,8 +72,9 @@ if (($input eq "") ){
 	exit;
 }
 
-my @remove_files=qw(project.txt pipeline.log EM_project.txt logos.html);
-my @remove_dir=qw(alignment KLD Multiple_PWMs responsibility logos_html Seq2Logo LoLa logos);
+if($run_all==1){
+my @remove_files=qw(project.txt pipeline.log EM_project.txt logos.html length_distribution.html);
+my @remove_dir=qw(alignment Multiple_PWMs responsibility logos_html Seq2Logo LoLa logos weights KLD);
 
 my $f;
 foreach $f (@remove_files){
@@ -79,10 +87,10 @@ foreach $f (@remove_dir){
 	system("rm -r $outdir/$f/");
     }
 }
-
+}
 
 $bs=0;
-if ($bias ne 0 && $bias ne "U"){
+if ($bias ne "U"){
 
     &check_bias($bias, $alphabet);
     system("cp ".$bias." $outdir"."/bias.txt");
@@ -91,7 +99,7 @@ if ($bias ne 0 && $bias ne "U"){
 } elsif ($bias eq "U"){
     $bs=1;
     if($alphabet ne "ACDEFGHIKLMNPQRSTVWY"){
-	print "Impossible to use Uniprot background frequencies with non amino acid alphabet\n";
+	print "Impossible to use Uniprot background frequencies (default) with non amino acid alphabet\n";
 	exit;
     }
    
@@ -104,8 +112,14 @@ system("mkdir -p ".$outdir."/data");
 system("mkdir -p ".$outdir."/KLD");
 system("mkdir -p ".$outdir."/responsibility");
 system("mkdir -p ".$outdir."/Multiple_PWMs");
-system("mkdir -p ".$outdir."/logos");
+system("mkdir -p ".$outdir."/weights");
+system("mkdir -p ".$outdir."/weights/plots");
 system("mkdir -p ".$outdir."/LoLa");
+if($logo==1){
+    system("mkdir -p ".$outdir."/logos");
+    system("mkdir -p ".$outdir."/logos_html");
+}
+
 
 my $ct;
 my $p;
@@ -135,26 +149,30 @@ if($exit_pep ne ""){
 open OUT, ">$outdir/data/peptides.fa";
 $ct=1;
 foreach $p (@pep){
-    print OUT ">$ct\n$p\n";
+   printf OUT ">$ct %d\n$p\n", length($p);
+#     printf OUT ">$ct\n$p\n";
     $ct++;
 }
 close OUT;
 
+#die;
 
-my $command = "0 0 ".$maxncomp." -d ".$outdir." -b $bs -a ".$alphabet;
-#print "$command\n";
-print_and_log("Running MixMHCp..."."\n");
-my $exit_status = system($MixMHCp_dir."MixMHCp.x $command >> ".$outdir."pipeline.log 2>> ".$outdir."pipeline.log");
-if (!($exit_status == 0)){
-    print "Error: MixMHCp failed to execute."."\n";
-    exit($exit_status);
+if($run_all==1){
+    my $command = "0 0 ".$maxncomp." -d ".$outdir." -b $bs -a ".$alphabet." -lc ".$lcore." -tr ".$trash;
+    print_and_log("Running MixMHCp..."."\n");
+    my $exit_status = system($MixMHCp_dir."MixMHCp.x $command >> ".$outdir."pipeline.log 2>> ".$outdir."pipeline.log");
+    if (!($exit_status == 0)){
+	print "Error: MixMHCp failed to execute."."\n";
+	exit($exit_status);
+    }
 }
+
 
 
 #my $logo="Seq2Logo";  #This is not working well on the GUI because the path to Seq2Logo and gs cannot be found.
 #Moreover, in case of gaps, Seq2Logo.py treats them as no sequences... so this works only well if we do not align the sequences
 
-if($logo==1){
+if($logo==1 && $run_all==1){
 
     #Here we will need to create a specialized viewer for a given alphabet
    
@@ -168,24 +186,41 @@ if($logo==1){
 	
     } elsif ($logo_type eq "Seq2Logo"){
 
+	################
+	# WARNING: This part is not working now with the responsibility_all
+	################
+	
 	print_and_log("Generating Seq2Logo... "."\n");
 	system("mkdir -p ".$outdir."/Seq2Logo/");
 	#The parameters for the Logo (background frequency, pseudo-count, Shannon/KL, format... are set in Seq2Logo.pl
-	system("perl ".$MixMHCp_dir."Seq2Logo.pl $outdir  $MixMHCp_dir >> ".$outdir."pipeline.log 2>> ".$outdir."pipeline.log");
+	system("perl ".$MixMHCp_dir."Seq2Logo.pl $outdir  $MixMHCp_dir $naa_min $naa_max $trash >> ".$outdir."pipeline.log 2>> ".$outdir."pipeline.log");
 	
     }
-    
+     
     print_and_log("Generating HTML tables document..."."\n");
-    system("perl ".$MixMHCp_dir."tablegenerator_html.pl $outdir $logo_type $name");
+    system("perl ".$MixMHCp_dir."tablegenerator_html.pl $outdir $logo_type $name $naa_min $naa_max $maxncomp $trash $lcore");
     
 }
 
+#Plot the peptide length distributions
+my $exit_status = system("Rscript $MixMHCp_dir/plot_length.R $outdir $naa_min $naa_max $maxncomp $trash");
+if (!($exit_status == 0)){
+	print "Error: Rscript failed to plot the peptide length distributions."."\n";
+	exit($exit_status);
+    }
 
 
 if ($temp_keep == 0){
-   system("rm $outdir/project.txt");
-   system("rm $outdir/EM_project.txt");
-   system("rm -r $outdir/LoLa");
+    if($run_all==1){
+	system("rm $outdir/project.txt");
+	system("rm $outdir/EM_project.txt");
+    }
+    if($logo_type eq "LoLa"){
+	system("rm -r $outdir/LoLa");
+    } elsif ($logo_type eq "Seq2Logo"){
+       system("rm -r $outdir/Seq2Logo");
+   }
+   
 }
 
 print "Done"."\n";
@@ -236,14 +271,35 @@ sub check_input{
     my $s;
     my $exit_pep="";
     my $lp;
+
+    my $min=100;
+    my $max=0;
     
     foreach $p (@pep){
 	$lp=length($p);
-	if(length($p) != $le){
-	    print_and_log("Peptides of different lengths: $le-mers and $lp-mers\n");
+	#if(length($p) != $le){
+	#    print_and_log("Peptides of different lengths: $le-mers and $lp-mers\n");
+	#    $exit_pep=$p;
+	#    last;
+	#}
+	if(length($p) < 5 ){
+	    print_and_log("Peptides should be at least of length 5\n");
 	    $exit_pep=$p;
 	    last;
 	}
+	if(length($p) > $lcore+10 ){
+	    print_and_log("Peptides should not be longer than 10 amino acids + length core ($lcore)\n");
+	    $exit_pep=$p;
+	    last;
+	}
+	if($naa_min>length($p)){
+	    $naa_min=length($p);
+	}
+	if($naa_max<length($p)){
+	    $naa_max=length($p);
+	}
+
+	
 	@a=split('', $p);
 	foreach $s (@a){
 	    if(!exists $aa{$s}){
@@ -281,12 +337,14 @@ sub check_bias{
 
     my $l;
     my $c=0;
-    print "$_[0]\n";
+    my @b;
+    my @ba;
     open IN, "$_[0]", or die "Bias file $_[0] not found\n";
     while($l=<IN>){
 	$l =~ s/\r?\n$//;
-	if($l =~ /^[0-9,.E]+$/ ){
-	    if($l<=0){
+	@b=split(' ', $l);
+	if($b[1] =~ /^[0-9,.E]+$/ ){
+	    if($b[1]<=0){
 		print_and_log("Invalid bias values: $l\n");
 		exit
 	    }
@@ -294,11 +352,33 @@ sub check_bias{
 	    print_and_log("Invalid bias values: $l\n");
 	    exit
 	}
-	$c++;
+	$c=$c+$b[1];
+	push @ba, $b[0];
     }
-    if($c ne length($_[1])){
-        print_and_log("Invalid bias file (not the same number of entries as the alphabet).\n");
+    close IN;
+
+    if($c <0.999 || $c > 1.001){
+	print_and_log("Bias values will be automatically normalized to one.\n");
+    }
+    
+    my @a=split('', $_[1]);
+
+    @a=sort @a;
+    @ba = sort @ba;
+
+    #print "@a\n@ba\n";
+
+    my $m;
+    if(scalar(@a) != scalar @ba){
+	print_and_log("Invalid bias file (not the same entries as the alphabet).\n");
 	exit;
+    }
+    
+    for(my $i=0; $i<scalar(@a); $i++){
+	if($a[$i] ne $ba[$i]){
+	    print_and_log("Invalid bias file (not the same entries as the alphabet).\n");
+	    exit;
+	}
     }
     
 }

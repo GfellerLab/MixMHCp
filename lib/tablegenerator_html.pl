@@ -7,13 +7,15 @@ use strict;
 my $outdir = $ARGV[0];
 my $logo_type=$ARGV[1];
 my $name=$ARGV[2];
+my $naa_min=$ARGV[3];
+my $naa_max=$ARGV[4];
+my $ncl=$ARGV[5];
+my $trash=$ARGV[6];
+my $lcore=$ARGV[7];
 
-my $logo_dir;
-if($logo_type eq "LoLa"){
-    $logo_dir="logos";
-} elsif($logo_type eq "Seq2Logo"){
-    $logo_dir="Seq2Logo";
-}
+
+my $logo_dir="logos";
+
 my $pwms_per_row = 3;
 my $head=<<"END";
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
@@ -45,16 +47,6 @@ END
 my $spacer="\n".'<div class="spacer">&nbsp;</div>'."\n";
 
 
-#Take all files in responsibility
-
- 
-
-open(OUT, ">".$outdir."/logos.html");
-print OUT $head;
-    
-    
-print OUT $spacer.'<HR size="3" color="black">'."\n";
-
 #Get the KLD values
 my $KLD_pres=0;
 my @KLD=();
@@ -82,108 +74,214 @@ if ( -e  "$outdir/KLD/best_ncl.txt") {
     close IN;
 }
 
-#Get the single logo
 
-my @single_list=();
-if ($logo_type eq "LoLa") {
-    @single_list = <$outdir/$logo_dir/LoLa_1-*.png>;
-} elsif ($logo_type eq "Seq2Logo") {
-    @single_list = <$outdir/$logo_dir/Seq2Logo_1-*.png>;
+
+my @list=();
+
+for (my $s=$naa_min; $s<=$naa_max; $s++) {
+    push @list, "$s";
 }
 
-my $single;
-my $size;
-#Make this is really the single PWM (there should be only one, but issues can arise if some files are called PWM_1-*)
-for (my $i = 0; $i < scalar(@single_list); $i++) {
-    my @a = split("-", $single_list[$i]);
-    my @b = split('\.png', $a[(scalar @a)-1]);
-    if ($b[0]>=0 && $b[0]<=10000000) {
-	my @c=split('\/', $single_list[$i]);
-	$single=$c[(scalar @c)-1];
-	$size=$b[0];
-    }
-}
 
-print OUT '<p><font size="7">'.$name.'</font></p>'."\n";
-print OUT '<font size="4"><b>1 motif'."\n";
-if($best_ncl==1){
-    print OUT ' - Optimal number of predicted motifs</b></font>'."\n";
-} else {
-    print OUT '</b></font>'."\n";
-}
-if ($KLD_pres==1) {
-    print OUT '<p><font size="3"><b>Score = '.$KLD[1].'</b></font></p>'."\n";
-}
-print OUT '<div class="spacer">&nbsp;</div>'."\n";
-print OUT '<div class="float"><img src="'.$logo_dir.'/'.$single.'" width="250" height="150"><p>'.$size.' (1.000)</p></div>'."\n\n";
-
-#Get the multiple logos
+my $logo_path;
+my $s;
+my $p;
+foreach $s (@list) {
     
-print OUT '<div class="spacer">&nbsp;</div>'."\n";
-#print OUT '<div class="spacer">&nbsp;</div>'."\n";
-
+    my $size;
+       
+    open(OUT, ">".$outdir."/logos_html/logos_L$s.html");
+    $logo_path="../";
     
-my @multiple_list = ();
-for (my $sm=2; $sm<=20; $sm++) {
-    my @multiple=();
-    my @multiple_size=();
-    $size=0;
-
-    #Read the first line of the responsibility file
-    my @name=();
-    if ( -e "$outdir/responsibility/resp_$sm.txt") {
-	open IN, "$outdir/responsibility/resp_$sm.txt", or die;
-	my $l=<IN>;
-	my @a=split(' ', $l);
-	for (my $i=1; $i <= $sm; $i++) {
-	    push @name, $a[$i];
-	}
-	close IN;
-    } else {
-	for (my $i=1; $i<=$sm; $i++) {
-	    push @name, $i;
-	}
+    print OUT $head;
+    print OUT $spacer.'<HR size="3" color="black">'."\n";
+    print OUT '<p><font size="7">'.$name.' -- '.$s.'-mers</font></p>'."\n";
+    print OUT '<p>'."\n";
+    for (my $s1=$naa_min; $s1<=$naa_max; $s1++) {
+	print OUT '<a href="./logos_L'.$s1.'.html">'.$s1.'-mers</a>'." | \n";
     }
+    print OUT '</p>'."\n";
+    print OUT '<p><a href="../length_distribution.html">Length distributions</a></p>'."\n";
+    print OUT '<div class="spacer">&nbsp;</div>'."\n";
+
+    if($s==$lcore){
+	open(OUT2, ">".$outdir."/logos.html");
 	
-    for (my $tsm=1; $tsm<=$sm; $tsm++) {
-
-	if ($logo_type eq "LoLa") {
-	    @multiple_list = <$outdir/$logo_dir/LoLa_$sm\_$tsm-*.png>;
-	} elsif ($logo_type eq "Seq2Logo"){
-	    @multiple_list = <$outdir/$logo_dir/Seq2Logo_$sm\_$tsm-*.png>;
+	print OUT2 $head;
+	print OUT2 $spacer.'<HR size="3" color="black">'."\n";
+	print OUT2 '<p><font size="7">'.$name.' -- core ('.$s.'-mers)</font></p>'."\n";
+	print OUT2 '<p>'."\n";
+	for (my $s1=$naa_min; $s1<=$naa_max; $s1++) {
+	    print OUT2 '<a href="./logos_html/logos_L'.$s1.'.html">'.$s1.'-mers</a>'." | \n";
 	}
-	for (my $i = 0; $i < scalar(@multiple_list); $i++) {
-	    my @a = split("-", $multiple_list[$i]);
+	print OUT2 '</p>'."\n";
+	print OUT2 '<p><a href="./length_distribution.html">Length distributions</a></p>'."\n";
+	print OUT2 '<div class="spacer">&nbsp;</div>'."\n";
+	
+    }
+    
+    my @multiple_list = ();
+    my @multiple_trash = ();
+    for (my $sm=1; $sm<=$ncl+$trash; $sm++) {
+	my @multiple=();
+	my @multiple_size=();
+	my @trash=();
+	my @trash_size=();
+	$size=0;
+	
+	
+	
+	for (my $tsm=1; $tsm<=$sm; $tsm++) {
+
+	    if ($logo_type eq "LoLa") {
+		@multiple_list = <$outdir/$logo_dir/LoLa_L$s\_$sm\_$tsm-*.png>;
+	    } elsif ($logo_type eq "Seq2Logo") {
+		@multiple_list = <$outdir/$logo_dir/Seq2Logo_L$s\_$sm\_$tsm-*.png>;
+	    }
+	    for (my $i = 0; $i < scalar(@multiple_list); $i++) {
+		my @a = split("-", $multiple_list[$i]);
+		my @b = split('\.png', $a[(scalar @a)-1]);
+		if ($b[0]>=0 && $b[0]<=10000000) {
+		    my @c=split('\/', $multiple_list[$i]);
+		    push @multiple, $c[(scalar @c)-1];
+		    push @multiple_size, $b[0];
+		    $size=$size+$b[0];
+		}
+	    }
+	}
+	if ($logo_type eq "LoLa") {
+	    @multiple_trash = <$outdir/$logo_dir/LoLa_L$s\_$sm\_Trash-*.png>;
+	} elsif ($logo_type eq "Seq2Logo") {
+	    @multiple_trash = <$outdir/$logo_dir/Seq2Logo_L$s\_$sm\_Trash-*.png>;
+	}
+	for (my $i = 0; $i < scalar(@multiple_trash); $i++) {
+	    my @a = split("-", $multiple_trash[$i]);
 	    my @b = split('\.png', $a[(scalar @a)-1]);
 	    if ($b[0]>=0 && $b[0]<=10000000) {
-		my @c=split('\/', $multiple_list[$i]);
-		push @multiple, $c[(scalar @c)-1];
-		push @multiple_size, $b[0];
+		my @c=split('\/', $multiple_trash[$i]);
+		push @trash, $c[(scalar @c)-1];
+		push @trash_size, $b[0];
 		$size=$size+$b[0];
 	    }
 	}
-    }
-    if (scalar @multiple == $sm) {
-	#print OUT '<div class="spacer">&nbsp;</div>'."\n";
-	print OUT '<p><font size="4"><b>'.$sm.' motifs'."\n";
-	if($best_ncl==$sm){
-	    print OUT ' - Optimal number of predicted motifs</b></font></p>'."\n";
-	} else {
-	    print OUT '</b></font></p>'."\n";
-	}
-	if ($KLD_pres==1) {
-	    print OUT '<p><font size="3"><b>Score = '.$KLD[$sm].'</b><font></p>'."\n";
-	}
-	for (my $i = 0; $i < scalar(@multiple); $i++) {
-	    my $p= sprintf("%.3f", $multiple_size[$i]/$size);
-	    if ($multiple_size[$i]>0) {
-		printf OUT '<div class="float"><img src="'.$logo_dir.'/'.$multiple[$i].'" width="250" height="150"><p>'.$name[$i].'  -  '.$multiple_size[$i].' ('.$p.')</p></div>'."\n";
-	    } else {
-		printf OUT '<div class="float"><img src="" width="250" height="150"><p>'.$name[$i].'  -  '.$multiple_size[$i].' ('.$p.')</p></div>'."\n";
+	
+	if (scalar @multiple == $sm) {
+	    if($sm==1){
+		print OUT '<p><font size="4"><b>'.$sm.' motif '."\n";
+	    }else{
+		print OUT '<p><font size="4"><b>'.$sm.' motifs'."\n";
 	    }
+	    print OUT '</b></font></p>'."\n";
+	    
+	    if ($KLD_pres==1) {
+		print OUT '<p><font size="3"><b>Score = '.$KLD[$sm].'</b><font></p>'."\n";
+	    }
+	    
+	    for (my $i = 0; $i < scalar(@multiple); $i++) {
+		if($size>0){
+		    $p=sprintf("%.3f", $multiple_size[$i]/$size);
+		} else {
+		    $p=0;
+		}
+		my $ti=$i+1;
+		if ($multiple_size[$i]>=0) {
+		    printf OUT '<div class="float"><img src="'.$logo_path.$logo_dir.'/'.$multiple[$i].'" width="250" height="150"><p>'.$ti.'  -  '.$multiple_size[$i].' ('.$p.')</p></div>'."\n";
+		} else {
+		    printf OUT '<div class="float"><img src="" width="250" height="150"><p>'.$ti.'  -  '.$multiple_size[$i].' ('.$p.')</p></div>'."\n";
+		}
+	    }
+	    if (scalar @trash>0) {
+		if($size>0){
+		    $p= sprintf("%.3f", $trash_size[0]/$size);
+		} else {
+		    $p=0;
+		}
+		printf OUT '<div class="float"><img src="'.$logo_path.$logo_dir.'/'.$trash[0].'" width="250" height="150"><p>Trash  -  '.$trash_size[0].' ('.$p.')</p></div>'."\n";
+	    }
+	    print OUT '<div class="spacer">&nbsp;</div>'."\n";
+
+	    if($s==$lcore){
+
+		if($sm==1){
+		    print OUT2 '<p><font size="4"><b>'.$sm.' motif '."\n";
+		}else{
+		    print OUT2 '<p><font size="4"><b>'.$sm.' motifs'."\n";
+		}
+		print OUT2 '</b></font></p>'."\n";
+		
+		if ($KLD_pres==1) {
+		    print OUT2 '<p><font size="3"><b>Score = '.$KLD[$sm].'</b><font></p>'."\n";
+		}
+		
+		for (my $i = 0; $i < scalar(@multiple); $i++) {
+		    if($size>0){
+			$p= sprintf("%.3f", $multiple_size[$i]/$size);
+		    }else {
+			$p=0;
+		    }
+		    my $ti=$i+1;
+		    if ($multiple_size[$i]>=0) {
+		    printf OUT2 '<div class="float"><img src="'.$logo_dir.'/'.$multiple[$i].'" width="250" height="150"><p>'.$ti.'  -  '.$multiple_size[$i].' ('.$p.')</p></div>'."\n";
+		} else {
+		    printf OUT2 '<div class="float"><img src="" width="250" height="150"><p>'.$ti.'  -  '.$multiple_size[$i].' ('.$p.')</p></div>'."\n";
+		}
+		}
+		if (scalar @trash>0) {
+		    if($size>0){
+			$p= sprintf("%.3f", $trash_size[0]/$size);
+		    }else {
+			$p=0;
+		    }
+		    printf OUT2 '<div class="float"><img src="'.$logo_dir.'/'.$trash[0].'" width="250" height="150"><p>Trash  -  '.$trash_size[0].' ('.$p.')</p></div>'."\n";
+		}
+		print OUT2 '<div class="spacer">&nbsp;</div>'."\n";
+		
+	    }
+	    
 	}
-	print OUT '<div class="spacer">&nbsp;</div>'."\n";
     }
+    
+    print OUT '<div class="spacer">&nbsp;</div>'."\n";
+    print OUT '</body>'."\n";
+    print OUT '</html>'."\n";
+    close OUT;
+
+    if($s==$lcore){
+	print OUT2 '<div class="spacer">&nbsp;</div>'."\n";
+	print OUT2 '</body>'."\n";
+	print OUT2 '</html>'."\n";
+	close OUT;
+    }
+   
+    
+}
+
+
+open OUT, ">".$outdir."/length_distribution.html";
+print OUT $head;
+
+print OUT $spacer.'<HR size="3" color="black">'."\n";
+
+print OUT '<p><font size="7">'.$name.' -- Peptide length distributions</font></p>'."\n";
+
+print OUT '<p>'."\n";
+
+print OUT '<a href="./logos_html/logos_L'.$lcore.'.html"> logos ('.$lcore.'-mers core)</a>'."\n";
+
+for(my $i=1; $i<=$ncl; $i++){
+
+    if($i==1){
+	print OUT '<p><font size="4"><b>'.$i.' motif '."\n";
+    }else{
+	print OUT '<p><font size="4"><b>'.$i.' motifs'."\n";
+    }
+    print OUT '</b></font></p>'."\n";
+    
+    for(my $j=1; $j<=$i; $j++){
+	printf OUT '<div class="float"><img src="./weights/plots/lg_'.$i.'_'.$j.'.png" width="200" height="200"></div>'."\n";
+    }
+    print OUT '<div class="spacer">&nbsp;</div>'."\n";
+    
 }
 
 print OUT '<div class="spacer">&nbsp;</div>'."\n";
@@ -191,5 +289,4 @@ print OUT '</body>'."\n";
 print OUT '</html>'."\n";
 close OUT;
 
-
-
+close OUT;

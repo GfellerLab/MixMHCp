@@ -54,7 +54,7 @@ double absv(double a);
 void EMsteps();
 void initialize_EM(double ***EM_pwm, double *wcl, int ncl);
 void expectation(double ***EM_pwm, double *wcl, double **resp, int ncl);
-void maximization(double **eprior, double **resp, double ***EM_pwm, double *wcl, double min_error, int ncl);
+void maximization(double **eprior, double **resp, double ***EM_pwm, double *wcl, int ncl);
 double loglikelihood(double **eprior, double ***EM_pwm, double *wcl, double *LL, double *sLL, int ncl);
 void compute_eprior(double **eprior, int ncl);
 
@@ -63,24 +63,28 @@ void print_EM_pwm(int ncl, double ***EM_pwm, double *wcl);
 double test_KLD(double **resp, int ncl);
 
 int position(char s);
-void remove_columns(int **tpeptide, int tnaa);
-
-void print_responsibility(int ncl, double **resp);
 
 void import_bias(char * out_dir, int bs);
 
 void make_cluster_pwm(int si, int ncl, double ***m, double **resp);
 
 void best_ncl(int ncl, double *KLD, double ****EM_pwm, double **wcl);
-    
+
+void predict_other_lengths(int ncl, double ***EM_pwm, double *wcl);
+
+void expectation_all(double ***EM_pwm, double **wcl, double **resp, int ncl, int s1, int **Npos, int **Cpos);
+void maximization_all(double ***EM_pwm, double **wcl, double **resp, int ncl, int s1);
+double loglikelihood_all(double ***EM_pwm, double **wcl, int ncl, int s1, int **Npos, int **Cpos);
+
+
 //Global variables
 
 int N;    //Alphabet size
-int naa; //number of residues (column) in the alignment for each peptide
+int *naa_all; //number of residues (column) in the alignment for each peptide
 int **peptide; // peptide composition [domain][position][peptide] (after filtering some columns)
-int tnaa;
-int **tpeptide; //initial peptides
-int kp;   //number of peptides associated with the input sample
+int **peptide_all; //initial peptides
+int kp;   //number of peptides associated with the input sample with length naa_core
+int kp_all;   //number of peptides associated with the input sample
 char *letter;
 int *best_comp;
 int sbest_comp;  //number of PWMs chosen by the user
@@ -90,13 +94,22 @@ int *cl_size;           //size of each cluster
 double fsm;
 int ncl_max;  //Maximum number of PWMs
 int naa_max;
+int naa_min;
 fstream afile;
 int decide_comp_number;   //1: the number of PWMs are fixed by the user. 0: The number of PWMs is to be found by the algorithm
 char * out_dir;
-double *bias;
+double * bias;
 double pseudo_count;
 double pseudo_count_prior;
 char * alphabet;
+int naa_core;
+int trash;
+int Nterm;
+int Cterm;
+
+double Cterm_pen;
+double Nterm_pen;
+
 
 /*
   Run with:
@@ -130,12 +143,24 @@ int main(int argc, char ** argv)
 	    //loads the param -b, background frequencies
 	    strcpy(alphabet, argv[i+1]);
 	}
+  	else if (strcmp(argv[i], "-tr") == 0) {
+	    //loads the param -b, background frequencies
+	    trash=atoi(argv[i+1]);
+	}
+  	else if (strcmp(argv[i], "-lc") == 0) {
+	    //loads the param -b, background frequencies
+	    naa_core=atoi(argv[i+1]);
+	}
     }
  
-    cout<<"MixMHCp input command line:\n";
+    /*cout<<"MixMHCp input command line:\n";
     for(int i=0; i<argc; i++)
 	cout<<argv[i]<<" ";
-    cout<<endl<<endl;
+	cout<<endl<<endl;*/
+
+    cout<<"Trash: "<<trash<<endl;
+    cout<<"Core length: "<<naa_core<<endl;
+    
 
     init_parameters(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]));
     import_alignment(alignment_dir);
@@ -154,6 +179,14 @@ int main(int argc, char ** argv)
 void init_parameters(int a, int b, int c)
 {
 
+    //naa_core=9; //This should be passed as an argument
+    //trash=1;
+
+    Nterm=3;
+    Cterm=2;
+    Cterm_pen=0.2;
+    Nterm_pen=0.05;
+    
     //Peptide
     if( a==0 ){
 	N=strlen(alphabet);
@@ -193,15 +226,18 @@ void EMsteps()
     double *wcl;
     double **eprior;
 
+    
+    int tncl_max=ncl_max+trash;
+
     //Final values for the Multiple PWMs
-    EM_pwm=new double**[ncl_max];
-    wcl=new double[ncl_max];
-    eprior=new double*[ncl_max];
-    for(int n=0; n<ncl_max; n++) {
+    EM_pwm=new double**[tncl_max];
+    wcl=new double[tncl_max];
+    eprior=new double*[tncl_max];
+    for(int n=0; n<tncl_max; n++) {
 	wcl[n]=0;
-	EM_pwm[n]=new double*[naa];
-	eprior[n]=new double[naa];
-	for(int s=0; s<naa; s++) {
+	EM_pwm[n]=new double*[naa_core];
+	eprior[n]=new double[naa_core];
+	for(int s=0; s<naa_core; s++) {
 	    EM_pwm[n][s]=new double[N];
 	    eprior[n][s]=0;
 	    for(int j=0; j<N; j++)
@@ -212,16 +248,16 @@ void EMsteps()
     double ****full_EM_pwm;
     double **full_wcl;
     
-    full_wcl=new double*[ncl_max];
-    full_EM_pwm=new double***[ncl_max];
+    full_wcl=new double*[tncl_max];
+    full_EM_pwm=new double***[tncl_max];
     
-    for(int tn=0; tn<ncl_max; tn++) {
-	full_EM_pwm[tn]=new double**[tn+1];
-	full_wcl[tn]=new double[tn+1];
-	for(int n=0; n<tn+1; n++) {
+    for(int tn=0; tn<tncl_max; tn++) {
+	full_EM_pwm[tn]=new double**[tn+1+trash];
+	full_wcl[tn]=new double[tn+1+trash];
+	for(int n=0; n<tn+1+trash; n++) {
 	    full_wcl[tn][n]=0;
-	    full_EM_pwm[tn][n]=new double*[naa];
-	    for(int s=0; s<naa; s++) {
+	    full_EM_pwm[tn][n]=new double*[naa_core];
+	    for(int s=0; s<naa_core; s++) {
 		full_EM_pwm[tn][n][s]=new double[N];
 		for(int j=0; j<N; j++)
 		    full_EM_pwm[tn][n][s][j]=0;
@@ -232,38 +268,41 @@ void EMsteps()
     //temporary values for multiple PWMs (different optimization runs)
     double ***tEM_pwm;      //[component][position][aa]
     double *twcl;
-    tEM_pwm=new double**[ncl_max];
-    twcl=new double[ncl_max];
-    for(int n=0; n<ncl_max; n++) {
+    tEM_pwm=new double**[tncl_max];
+    twcl=new double[tncl_max];
+    for(int n=0; n<tncl_max; n++) {
 	twcl[n]=0;
-	tEM_pwm[n]=new double*[naa_max];
+	tEM_pwm[n]=new double*[naa_core];
+	for(int s=0; s<naa_core; s++) {
+	    tEM_pwm[n][s]=new double[N];
+	}
     }
 
     //hidden (latent) variables, useful for the EM
     double ***resp;
-    resp=new double**[ncl_max];
-    for(int ncl=0; ncl<ncl_max; ncl++){
+    resp=new double**[tncl_max];
+    for(int ncl=0; ncl<tncl_max; ncl++){
 	resp[ncl]=new double*[kpmax];
 	for(int j=0; j<kpmax; j++) {
-	    resp[ncl][j]=new double[ncl_max];
+	    resp[ncl][j]=new double[tncl_max];
 	}
     }
     double **tresp;
     tresp=new double*[kpmax];
     for(int j=0; j<kpmax; j++) {
-	tresp[j]=new double[ncl_max];
+	tresp[j]=new double[tncl_max];
     }
     
     double *LL;
-    LL=new double[ncl_max];
+    LL=new double[tncl_max];
     double *sLL;
-    sLL=new double[ncl_max];
+    sLL=new double[tncl_max];
 
     int rp=5;  //Number of optimization runs (starting from different initial configuration)
 
     int st;
     double error=0;
-    double min_error=0.005;
+    double min_error=0.001;
     double LLerror;
     int ct;
     int comp_kp;
@@ -272,7 +311,6 @@ void EMsteps()
     int step;
     long double max_LL=-100000000000.0;
     long double max_sLL=-100000000000.0;
-
 
     int tt=0;
     int corr;
@@ -285,9 +323,9 @@ void EMsteps()
     double *KLD;
     int pncl=0;
     double mncl=0;
-    int ncl=0;
-    KLD=new double[ncl_max+1];
-    for(int n=0; n<ncl_max+1; n++){
+    
+    KLD=new double[tncl_max+1];
+    for(int n=0; n<tncl_max+1; n++){
 	KLD[n]=-10000;
     }
   
@@ -295,7 +333,7 @@ void EMsteps()
     FILE *F;
 
     int *sz;
-    sz=new int[ncl];
+    sz=new int[tncl_max];
     
     
     sprintf(buffer, "%s/project.txt", out_dir);
@@ -307,39 +345,28 @@ void EMsteps()
     afile<<"#ProjectFile\n";
     afile.close();
     	
-    cout<<"Number of peptides: "<<kp<<endl;
-    
+    cout<<"Number of peptides: "<<kp_all<<endl;
+    cout<<"Number of "<<naa_core<<"-mer: "<<kp<<endl;
+     
     //Run the EM optimization, 
     
     //Test different number of components
     //Initialize EM_pwm with the values in pwm
     //Here, this differs a bit from the gibbsclustering, but we have to be careful and consistent with the random counts...
-    
-    for(int j=0; j<kp; j++) {
-	resp[0][j][0]=1;
-    }
-    print_responsibility(1, resp[0]);
-	    
+
     srand(1);
-    random_comp( 1, 0);
-    initialize_EM(EM_pwm, wcl, 1);
-    compute_eprior(eprior, 1);
-    loglikelihood(eprior, EM_pwm, wcl, LL, sLL, 1);
-     
-    print_EM_pwm(1, EM_pwm, wcl);
-        
-    KLD[1]=test_KLD(resp[0], 1);
-        
-    for(int ncl=2; ncl<=ncl_max; ncl++) {
+    
+    for(int ncl=1; ncl<=ncl_max; ncl++) {
 
 	srand(ncl);	    
 	max_LL=-10000000000.0;
-	
+
 	//Run 'rp' times the optimization
 	for(int t=0; t<rp; t++) {
 	    
 	    random_comp(ncl, t);
 	    initialize_EM(tEM_pwm, twcl, ncl);
+	    
 	    compute_eprior(eprior, ncl);
 	    
 	    LLerror=1;
@@ -351,28 +378,30 @@ void EMsteps()
 	    while(LLerror>min_error) {
 		LLct++;
 		//Compute the responsibilities
+		
 		expectation(tEM_pwm, twcl, tresp, ncl);
 		
 		//Compute the new model coefficients and the mixing coefficients using the responsibilities
-		maximization(eprior, tresp, tEM_pwm, twcl, min_error, ncl);
+		maximization(eprior, tresp, tEM_pwm, twcl, ncl);
 		
 		//Compute the new loglikelihood
 		LLerror=loglikelihood(eprior, tEM_pwm, twcl, LL, sLL, ncl);
+		
 	    }
-
 	    if(LL[ncl]>max_LL) {
 		//If the logikelyhood is larger, then keep these values
 		max_LL=LL[ncl];
 		max_sLL=sLL[ncl];
-		for(int n=0; n<ncl; n++) {
+		for(int n=0; n<ncl+trash; n++) {
 		    wcl[n]=twcl[n];
-		    for(int s=0; s<naa; s++) {
+		    for(int s=0; s<naa_core; s++) {
 			for(int j=0; j<N; j++)
 			    EM_pwm[n][s][j]=tEM_pwm[n][s][j];
 		    }
 		}
+		
 		for(int j=0; j<kp; j++) {
-		    for(int n=0; n<ncl; n++) {
+		    for(int n=0; n<ncl+trash; n++) {
 			resp[ncl-1][j][n]=tresp[j][n];
 		    }
 		}
@@ -380,38 +409,33 @@ void EMsteps()
 	}
 
 	//Keep track of the PWMs (this is to compute the best number of motifs).
-	for(int n=0; n<ncl; n++){
+	for(int n=0; n<ncl+trash; n++){
 	    full_wcl[ncl-1][n]=wcl[n];
-	    for(int s=0; s<naa; s++) {
+	    for(int s=0; s<naa_core; s++) {
 		for(int j=0; j<N; j++)
 		    full_EM_pwm[ncl-1][n][s][j]=EM_pwm[n][s][j];
 	    }
 	}
 	
 	KLD[ncl]=test_KLD(resp[ncl-1], ncl);
-	print_responsibility(ncl, resp[ncl-1]);
 	print_EM_pwm(ncl, EM_pwm, wcl);
-	    
+	predict_other_lengths(ncl, EM_pwm, wcl);
+	   
     }
 	
-    sprintf(buffer, "%s/KLD/KLD.txt", out_dir);
-    F=fopen(buffer, "w");
-    fprintf(F, "1\t%.6f\n", KLD[1]);
-    for(int n=2; n<=ncl_max; n++){
-	fprintf(F, "%d\t%.6f\n", n, KLD[n]);
-    }
-    fclose(F);
+   
 
     best_ncl(ncl_max, KLD, full_EM_pwm, full_wcl);
 	
 }
 
+
 void best_ncl(int ncl_max, double *KLD, double ****full_EM_pwm, double **full_wcl){
 
     int ncl_final;
 
-    double thresh1=100/(1.0*N*N*naa);
-    double thresh2=200/(1.0*N*N*naa);
+    double thresh1=100/(1.0*N*N*naa_core);
+    double thresh2=200/(1.0*N*N*naa_core);
     
     //Find the max_KLD
     double Max_KLD=KLD[0];
@@ -449,12 +473,12 @@ void best_ncl(int ncl_max, double *KLD, double ****full_EM_pwm, double **full_wc
 	    //Find the most similar logo 
 	    for(int n1=0; n1<ncl-1; n1++){
 		d=0;
-		for(int s=0; s<naa; s++) {
+		for(int s=0; s<naa_core; s++) {
 		    for(int j=0; j<N; j++){
 			d=d+(full_EM_pwm[ncl-2][n1][s][j]-full_EM_pwm[ncl-1][n2][s][j])*(full_EM_pwm[ncl-2][n1][s][j]-full_EM_pwm[ncl-1][n2][s][j]);
 		    }
 		}
-		d = d/(1.0*naa);
+		d = d/(1.0*naa_core);
 		if (d<min) {
 		    min=d;
 		    minp=n1;
@@ -485,12 +509,12 @@ void best_ncl(int ncl_max, double *KLD, double ****full_EM_pwm, double **full_wc
 	    for(int n1=0; n1<ncl; n1++){ //This is comparing among clusters
 		if(n1 != n2){
 		    d=0;
-		    for(int s=0; s<naa; s++) {
+		    for(int s=0; s<naa_core; s++) {
 			for(int j=0; j<N; j++){
 			    d=d+(full_EM_pwm[ncl-1][n1][s][j]-full_EM_pwm[ncl-1][n2][s][j])*(full_EM_pwm[ncl-1][n1][s][j]-full_EM_pwm[ncl-1][n2][s][j]);
 			}
 		    }
-		    d = d/(1.0*naa);
+		    d = d/(1.0*naa_core);
 		    if (d<min) {
 			min=d;
 		    }
@@ -536,6 +560,10 @@ void best_ncl(int ncl_max, double *KLD, double ****full_EM_pwm, double **full_wc
     sprintf(buffer, "%s/KLD/best_ncl.txt", out_dir);
     F=fopen(buffer, "w");
     fprintf(F, "Final number of motifs:\t%d\n", ncl_final);
+    fprintf(F, "1\t%.6f\n", KLD[1]);
+    for(int n=2; n<=ncl_max; n++){
+	fprintf(F, "%d\t%.6f\n", n, KLD[n]);
+    }
     fclose(F);
     
 }
@@ -550,7 +578,7 @@ double test_KLD(double **resp, int ncl){
     int cl;
     double max_resp;
     double *Sscore;
-    Sscore=new double[ncl];
+    Sscore=new double[ncl+trash];
 
     double lambda=0.8;
     double sigma;
@@ -558,8 +586,8 @@ double test_KLD(double **resp, int ncl){
     sigma=10;
 
     int *sz;
-    sz=new int[ncl];
-    for(int n=0; n<ncl; n++) {
+    sz=new int[ncl+trash];
+    for(int n=0; n<ncl+trash; n++) {
 	sz[n]=0;
     }
     int *gr;
@@ -569,7 +597,7 @@ double test_KLD(double **resp, int ncl){
     for(int j=0; j<kp; j++) {
 	max_resp=0;
 	cl=-1;
-	for(int n=0; n<ncl; n++) {
+	for(int n=0; n<ncl+trash; n++) {
 	    if(resp[j][n]>max_resp){
 		max_resp=resp[j][n];
 		cl=n;
@@ -581,20 +609,20 @@ double test_KLD(double **resp, int ncl){
 
     //Build the global PWMs for each cluster without normalization
     double ***cluster_pwm;
-    cluster_pwm=new double**[ncl];
-    for(int n=0; n<ncl; n++) {
-	cluster_pwm[n]=new double*[naa];
-	for(int s=0; s<naa; s++){
+    cluster_pwm=new double**[ncl+trash];
+    for(int n=0; n<ncl+trash; n++) {
+	cluster_pwm[n]=new double*[naa_core];
+	for(int s=0; s<naa_core; s++){
 	    cluster_pwm[n][s]=new double[N];
 	}
     }
-    make_cluster_pwm(-1, ncl, cluster_pwm, resp);
+    make_cluster_pwm(-1, ncl+trash, cluster_pwm, resp);
  
     double ***cl_pwm;
-    cl_pwm=new double**[ncl];
-    for(int n=0; n<ncl; n++) {
-	cl_pwm[n]=new double*[naa];
-	for(int s=0; s<naa; s++){
+    cl_pwm=new double**[ncl+trash];
+    for(int n=0; n<ncl+trash; n++) {
+	cl_pwm[n]=new double*[naa_core];
+	for(int s=0; s<naa_core; s++){
 	    cl_pwm[n][s]=new double[N];
 	}
     }
@@ -607,17 +635,17 @@ double test_KLD(double **resp, int ncl){
 	//We actually recompute the PWMs only for the cluster which the pepitde is assigned to (excluding the sequence of the peptide itself) and then compute the score.
 	//This is to match better the definition in Andreatta et al., although large differences are not expected.
 
-	for(int n=0; n<ncl; n++) {
-	    for(int s=0; s<naa; s++){
+	for(int n=0; n<ncl+trash; n++) {
+	    for(int s=0; s<naa_core; s++){
 		for(int j=0; j<N; j++){
 		    cl_pwm[n][s][j]=cluster_pwm[n][s][j];
 		}
 	    }
 	}
 	
-	for(int s=0; s<naa; s++){
-	    if(peptide[s][j] != N){
-		cl_pwm[cl][s][peptide[s][j]]--;
+	for(int s=0; s<naa_core; s++){
+	    if(peptide[j][s] != N){
+		cl_pwm[cl][s][peptide[j][s]]--;
 	    } else {
 		for(int p=0; p<N; p++){
 		    cl_pwm[cl][s][p]=cl_pwm[cl][s][p]-1.0/N;
@@ -626,26 +654,26 @@ double test_KLD(double **resp, int ncl){
 	}
 	
 	//Include the normalized counts
-	for(int n=0; n<ncl; n++) {
+	for(int n=0; n<ncl+trash; n++) {
 	    //If the cluster is empty, give a flat PWM so that the score is 0.
 	    if((n==cl && sz[n]==1) || (n != cl && sz[n]==0)){
-		for(int s=0; s<naa; s++){
+		for(int s=0; s<naa_core; s++){
 		    for(int p=0; p<N; p++)
 			cl_pwm[n][s][p]=bias[p];
 		}
 	    } else {
-		for(int s=0; s<naa; s++){
+		for(int s=0; s<naa_core; s++){
 		    normalize_pseudo(cl_pwm[n][s]);
 		}
 	    }
 	}
 
 	//Compute the scores with each PWM
-	for(int n=0; n<ncl; n++) {
+	for(int n=0; n<ncl+trash; n++) {
 	    Sscore[n]=0;
-	    for(int s=0; s<naa; s++){
-		if(peptide[s][j] != N){
-		    Sscore[n]=Sscore[n]+2*log(cl_pwm[n][s][peptide[s][j]]/bias[peptide[s][j]])/log(2);		  
+	    for(int s=0; s<naa_core; s++){
+		if(peptide[j][s] != N){
+		    Sscore[n]=Sscore[n]+2*log(cl_pwm[n][s][peptide[j][s]]/bias[peptide[j][s]])/log(2);		  
 		}
 	    }
 	    if(n != cl){
@@ -657,7 +685,7 @@ double test_KLD(double **resp, int ncl){
 
 	//Compute the KLD score for all other clusters
 	max_KLD=0;
-	for(int n=0; n<ncl; n++) {
+	for(int n=0; n<ncl+trash; n++) {
 	    if(n != cl && max_KLD<Sscore[n]){
 		max_KLD=Sscore[n];
 	    }
@@ -700,7 +728,7 @@ void make_cluster_pwm(int si, int ncl, double ***m, double **resp){
     //cout<<i<<" "<<si<<" "<<ncl<<" "<<endl;
 
     for(int n=0; n<ncl; n++){
-	for(int s=0; s<naa; s++){
+	for(int s=0; s<naa_core; s++){
 	    for(int p=0; p<N; p++){
 		m[n][s][p]=0;
 	    }
@@ -722,9 +750,9 @@ void make_cluster_pwm(int si, int ncl, double ***m, double **resp){
 		}
 	    }
 	
-	    for(int s=0; s<naa; s++){
-		if(peptide[s][j] != N){
-		    m[cl][s][peptide[s][j]]++;
+	    for(int s=0; s<naa_core; s++){
+		if(peptide[j][s] != N){
+		    m[cl][s][peptide[j][s]]++;
 		} else {
 		    for(int p=0; p<N; p++){
 			m[cl][s][p]=m[cl][s][p]+1.0/N;
@@ -744,13 +772,13 @@ void initialize_comp()
     int comp_kp;
 
     
-    cl_size=new int[ncl_max];
+    cl_size=new int[ncl_max+trash];
     best_comp=new int[kp];
 
-    comp_pep=new int**[ncl_max];
-    for(int n=0; n<ncl_max; n++) {
-	comp_pep[n]=new int*[naa];   //[position][cluster_label]
-	for(int s=0; s<naa; s++)
+    comp_pep=new int**[ncl_max+trash];
+    for(int n=0; n<ncl_max+trash; n++) {
+	comp_pep[n]=new int*[naa_core];   //[position][cluster_label]
+	for(int s=0; s<naa_core; s++)
 	    comp_pep[n][s]=new int[kp];
     }
 }
@@ -769,35 +797,33 @@ void random_comp(int ncl, int t)
 
     //This part does no depend on random numbers
     if(ncl<kp){
-	for(int j=0; j<ncl; j++) {
-	    best_comp[j]=j%ncl;
+	for(int j=0; j<ncl+trash; j++) { //This is to make sure that at least one peptide is found in each initial cluster
+	    best_comp[j]=j%(ncl+trash);
 	}
 	
 	for(int j=ncl; j<kp; j++) {
-	    best_comp[j]=int(j/(t+1))%ncl;
+	    best_comp[j]=int(j/(t+1))%(ncl+trash);
 	}
     }
     else{
 	for(int j=0; j<kp; j++) {
-	    best_comp[j]=j%ncl;
+	    best_comp[j]=j%(ncl+trash);
 	}
     }
 
     
-    for(int n=0; n<ncl; n++)
+    for(int n=0; n<ncl+trash; n++)
 	cl_size[n]=0;
 
     for(int j=0; j<kp; j++) {
-	if(best_comp[j]>=0) {
-	    cl_size[best_comp[j]]++;
-	}
+	cl_size[best_comp[j]]++;
     }
-    for(int n=0; n<ncl; n++) {
+    for(int n=0; n<ncl+trash; n++) {
 	comp_kp=0;
 	for(int j=0; j<kp; j++) {
 	    if(best_comp[j]==n) {
-		for(int s=0; s<naa; s++) {
-		    comp_pep[n][s][comp_kp]=peptide[s][j];
+		for(int s=0; s<naa_core; s++) {
+		    comp_pep[n][s][comp_kp]=peptide[j][s];
 		}
 		comp_kp++;
 	    }
@@ -861,47 +887,46 @@ void import_bias(char * out_dir, int bs){
     int t;
     bias=new double[N];
     
-    if(bs==0){
-	for (int i = 0; i < N; i++) {
-	    bias[i] = 1;
-	}
-	cout << "Flat background" << endl;
-	
-    } else if(bs==1){
-	bias[0]=0.074;
-	bias[1]=0.025;
-	bias[2]=0.054;
-	bias[3]=0.054;
-	bias[4]=0.047;
-	bias[5]=0.074;
-	bias[6]=0.026;
-	bias[7]=0.068;
-	bias[8]=0.058;
-	bias[9]=0.099;
-	bias[10]=0.025;
-	bias[11]=0.045;
-	bias[12]=0.039;
-	bias[13]=0.034;
-	bias[14]=0.052;
-	bias[15]=0.057;
-	bias[16]=0.051;
-	bias[17]=0.073;
-	bias[18]=0.013;
-	bias[19]=0.032;
-	cout << "Uniprot background" << endl;
+    if(bs==1){
+	bias[0]=0.074; // A
+	bias[1]=0.025; // C
+	bias[2]=0.054; // D
+	bias[3]=0.054; // E
+	bias[4]=0.047; // F
+	bias[5]=0.074; // G
+	bias[6]=0.026; // H
+	bias[7]=0.068; // I
+	bias[8]=0.058; // K
+	bias[9]=0.099; // L
+	bias[10]=0.025; // M
+	bias[11]=0.045; // N
+	bias[12]=0.039; // P
+	bias[13]=0.034; // Q
+	bias[14]=0.052; // R
+	bias[15]=0.057; // S
+	bias[16]=0.051; // T
+	bias[17]=0.073; // V
+	bias[18]=0.013; // W
+	bias[19]=0.032; // Y
+	cout << "Background: Uniprot" << endl;
     } else if(bs==2){
 	
 	sprintf(file, "%s/bias.txt", out_dir);
 	afile.open(file, ios::in);
 
+	char str;
+	int p;
 	if (afile.is_open()) {
-	    cout << "Importing residue biases from " << file << endl;
-	    for (int i=0; i<N; i++) afile>>bias[i];      
-	} else {
-	    cout << "No bias file: Use flat background" << endl;
-	    for (int i = 0; i < N; i++) bias[i] = 1;
-	}
+	    cout << "Background: " << file << endl;
+	    for (int i=0; i<N; i++) {
+		afile>>str;
+		p=position(str);
+		afile>>bias[p];
+	    }
+	} 
+	
     }
+    
     
     //Normalize the bias
     double T=0;
@@ -910,6 +935,7 @@ void import_bias(char * out_dir, int bs){
     for (int i = 0; i < N; i++)
 	bias[i]=bias[i]/T;
 
+    
     afile.close();
 }
 
@@ -920,11 +946,10 @@ void import_alignment(char * alignment_dir)
     string nada="";
     fstream afile1;
 
-    cout << "Alignment folder:\n" << alignment_dir << endl;
+    cout << "Input folder:\n" << alignment_dir << endl;
   
 
     char * pch;
-    int tot=0;
     char str [4096]; //Note: We increased this from 40 to accommodate DNA seqs
     int ln;
     char file [4096];
@@ -932,6 +957,7 @@ void import_alignment(char * alignment_dir)
    
     kpmax=0;
     naa_max=0;
+    naa_min=100;
 
     sprintf(file, "%s/peptides.fa", alignment_dir);
 	
@@ -944,11 +970,6 @@ void import_alignment(char * alignment_dir)
 	    if(line.compare(nada) != 0) {
 		ct++;
 	    }
-	    //get the peptide length
-	    if(ct==2) {
-		tnaa=line.length();
-		//cout << "peptide length tnaa = " << tnaa << endl;
-	    }
 	}
 	myfile.close();
     } else {
@@ -956,290 +977,61 @@ void import_alignment(char * alignment_dir)
 	exit(2);
     }
     //Import the peptides
-    kp=ct/2;
+    kp_all=ct/2;
     
-    tot=tot+kp;
-    if(kp>kpmax)
-	kpmax=kp;
+    if(kp_all>kpmax)
+	kpmax=kp_all;
 
-    tpeptide=new int*[tnaa];
-    for(int j=0; j<tnaa; j++)
-	tpeptide[j]=new int[kp];
-
+    peptide_all=new int*[kp_all];
+    naa_all=new int[kp_all];
+    
+    std::string delimiter = " ";
+    std::string st;
+    std::string st2;
+    int tmp;
+    kp=0;
     afile1.open(file, ios::in);
-    for(int j=0; j<kp; j++) {
+    for(int j=0; j<kp_all; j++) {
 	afile1>>str;
-	afile1>>str; //Why is this duped?
-	for(int s=0; s<tnaa; s++) {
-	    tpeptide[s][j]=position(str[s]); //Use a nummerical representation for amino acids
+	afile1>>naa_all[j];
+	peptide_all[j]=new int[naa_all[j]];
+
+	if(naa_all[j]>naa_max){
+	    naa_max=naa_all[j];
 	}
+	if(naa_all[j]<naa_min){
+	    naa_min=naa_all[j];
+	}
+	
+	afile1>>str;
+	for(int s=0; s<naa_all[j]; s++) {
+	    peptide_all[j][s]=position(str[s]); //Use a nummerical representation for amino acids
+	}
+	if(naa_all[j]==naa_core){
+	    kp++;
+	}
+
     }
     afile1.close();
 
+    peptide=new int*[kp];
 
+    ct=0;
+    for(int j=0; j<kp_all; j++) {
+	if(naa_all[j]==naa_core){
+	    peptide[ct]=new int[naa_core];
+	    for(int s=0; s<naa_core; s++) {
+		peptide[ct][s]=peptide_all[j][s];
+	    }
+	    ct++;
+	}
+    }
+    
     //Remove the positions with very low specificity on both sides of the motif
-    remove_columns(tpeptide, tnaa);
+    //remove_columns(tpeptide, tnaa);
   
 }
 
-void remove_columns(int **tpeptide, int tnaa)
-{
-
-    double *f;
-    f=new double[N];
-    double ent;
-    int *p;
-    p=new int[500];
-    double ent_cutoff=0.99;  //This is the cut-off for the column to be removed
-
-    int s1, s2, st;
-    int stop;
-
-    for(int s=0; s<tnaa; s++) {
-	
-	p[s]=1;
-	for(int t=0; t<N; t++)
-	    f[t]=0;
-	
-	for(int j=0; j<kp; j++) {
-	    if(tpeptide[s][j] != N) {
-		f[tpeptide[s][j]]++;
-	    }
-	    if(tpeptide[s][j] == N) {
-		for(int t=0; t<N; t++)
-		    f[t]=f[t]+1.0/N;
-	    }
-	}
-	ent=0;
-	for(int t=0; t<N; t++) {
-	    if(f[t]>0) {
-		f[t]=1.0*f[t]/kp;
-		ent=ent-f[t]*log(f[t])/log(N);
-	    }
-	}
-	if(ent>ent_cutoff) {
-	    p[s]=0;
-	}
-	//p[s]=1;  //DG
-    }
-    stop=1;
-    s1=0;
-    //Start removing positions from N-terminal until a position with low enough entropy is found
-    for(int s=0; s<tnaa && stop==1; s++) {
-	if(p[s] == 0)
-	    s1++;
-	if(p[s] != 0)
-	    stop=0;
-    }
-    stop=1;
-    s2=tnaa-1;
-    //Start removing positions from C-terminal until a position with low enough entropy is found
-    for(int s=tnaa-1; s>0 && stop==1; s--) {
-	if(p[s] == 0)
-	    s2--;
-	if(p[s] != 0)
-	    stop=0;
-    }
-    s2++;
-    st=0;
-    naa=s2-s1;
-
-	
-    if(naa>naa_max)
-	naa_max=naa;
-
-    //Build the new list of peptides
-    //cout << "This is the problem: " << naa << " " << i << endl;
-
-    peptide=new int *[naa];
-    
-    for(int s=s1; s<s2; s++) {
-	peptide[st]=new int[kp];
-	for(int j=0; j<kp; j++) {
-	    peptide[st][j]=tpeptide[s][j];
-	}
-	st++;
-    }
- 
-
-}
-
-void print_responsibility(int ncl, double **resp){
-  
-    char buffer [4096];
-    FILE *F;
-    int *cluster;
-    cluster=new int[kp];
-    int ct, pmax;
-    double max;
-    char file [4096];
-     int *size_cluster;
-    size_cluster=new int[ncl]; for(int n=0; n<ncl; n++){ size_cluster[n]=0;}
-    
-  
-    sprintf(buffer, "%s/responsibility/resp_%d.txt", out_dir, ncl);
-    F=fopen(buffer, "w");
-    fprintf(F, "Peptide\t");
-    for(int n=0; n<ncl; n++){
-	fprintf(F, "%d\t", n+1);
-    }
-    fprintf(F, "\n");
-    for(int j=0; j<kp; j++){
-	for(int s=0; s<tnaa; s++){
-	    if(tpeptide[s][j] != N)  //Do not print gaps (actually it's better to keep them).
-		fprintf(F, "%c", letter[tpeptide[s][j]]);
-	    else
-		fprintf(F, "-");
-	}
-	fprintf(F, "\t");
-	max=-1;
-	for(int n=0; n<ncl; n++){
-	    if(resp[j][n]>0.000001)
-		fprintf(F, "%.6f\t", resp[j][n]);
-	    else
-		fprintf(F, "%.6f\t", 0.000001);
-	    
-	    if(resp[j][n]>max){
-		max=resp[j][n];
-		cluster[j]=n;
-	    }
-	}
-	size_cluster[cluster[j]]++;
-	fprintf(F, "\n");
-    }
-    fclose(F);
-    
-    
-    //Print the sequences in different clusters in LoLa format
-
-    // WARNING:
-    // There is a problem with the X, since they are not treated properly in LoLa...
-    // We need to have fake sequence files...
-    
-    int A=1000;
-    int r;
-    double **tfr;
-    int **int_tfr;
-    tfr=new double*[naa];
-    int_tfr=new int*[naa];
-    for(int s=0; s<naa; s++) {
-	tfr[s]=new double[N];
-	int_tfr[s]=new int[N];
-	for(int j=0; j<N; j++){
-	    tfr[s][j]=0;
-	    int_tfr[s][j]=0;
-	}
-    }
-    int *index;
-    index=new int[naa_max];
-    
-     
-    if(ncl==1){
-	sprintf(buffer, "%s/project.txt", out_dir);
-	afile.open(buffer, std::ios_base::app);
-    } else if(ncl>1){
-	sprintf(buffer, "%s/EM_project.txt", out_dir);
-	afile.open(buffer, std::ios_base::app);
-    }
-    
-    for(int n=0; n<ncl; n++){
-	ct=0;
-	if(ncl>1){
-	    sprintf(file, "%s/LoLa/LoLa_%d_%d.txt", out_dir,  ncl, n+1);
-	} else if(ncl==1){
-	    sprintf(file, "%s/LoLa/LoLa_%d.txt", out_dir, n+1);
-	}
-	F=fopen(file, "w");
-	
-	if(ncl>1){
-	    fprintf(F, "Gene Name	LoLa_%d_%d\nAccession	Refseq:1\nOrganism	H\nNCBITaxonomyID	1\nDomain Number	%d\nDomain Type	HLA\nInterpro ID	1\nTechnique	1\nDomain sequence	A\nDomain Range	1-1\nComment\t\nPeptideName	Peptide	CloneFrequency	QuantData	ExternalIdentifier\n", ncl, n+1, size_cluster[n]);
-	} else if(ncl==1){
-	    fprintf(F, "Gene Name	LoLa_%d\nAccession	Refseq:1\nOrganism	H\nNCBITaxonomyID	1\nDomain Number	%d\nDomain Type	HLA\nInterpro ID	1\nTechnique	1\nDomain sequence	A\nDomain Range	1-1\nComment\t\nPeptideName	Peptide	CloneFrequency	QuantData	ExternalIdentifier\n", ncl, size_cluster[n]);
-	}
-	if(size_cluster[n]>0){
-	    
-	    //Compute the frequency
-	    for(int s=0; s<naa; s++) {
-		for(int j=0; j<N; j++){
-		    tfr[s][j]=0;
-		    int_tfr[s][j]=0;
-		}
-	    }
-	    ct=0;
-	    for(int j=0; j<kp; j++){
-		if(cluster[j]==n){
-		    ct++;
-		    for(int s=0; s<naa; s++) {
-			if(peptide[s][j]<N){
-			    tfr[s][peptide[s][j]]++;
-			} else {
-			    for(int p=0; p<N; p++){
-				tfr[s][p]=tfr[s][p]+1.0/N;
-			    }
-			}
-		    }
-		}
-	    }
-	    //normalize
-	    for(int s=0; s<naa; s++) {
-		index[s]=0;
-		for(int p=0; p<N; p++){
-		    tfr[s][p]=1.0*tfr[s][p]/ct;
-		    int_tfr[s][p]=int(A*tfr[s][p]);
-		}
-	    }
-	    //Check that the PWM columns truly sum up to A
-	    for(int s=0; s<naa; s++) {
-		ct=0;
-		for(int j=0; j<N; j++) {
-		    ct=ct+int_tfr[s][j];
-		}
-		if(ct<A) {
-		    for(int t=0; t<A-ct; t++) {
-			r=rand()%N;
-			int_tfr[s][r]++;
-		    }
-		}
-		//Use the cumulative sum
-		for(int j=1; j<N; j++) {
-		    int_tfr[s][j]=int_tfr[s][j]+int_tfr[s][j-1];
-		}
-	    }
-		    
-	    //Build the fake sequence list
-	    for(int t=0; t<A; t++) {
-		fprintf(F, "%d\t", t+1);
-		for(int s=0; s<naa; s++) {
-		    while(t>=int_tfr[s][index[s]]) {
-			index[s]++;
-		    }
-		    fprintf(F, "%c", letter[index[s]]);
-		}
-		fprintf(F, "\t1\n");
-	    }
-
-
-
-	    
-	   
-	} else if(size_cluster[n]==0){
-	    fprintf(F, "%d\tEMPTY", 1);
-	    for(int s=6; s<naa; s++) {
-		fprintf(F, "X");
-	    }
-	    fprintf(F, "\t1\n");
-	}
-	fclose(F);
-	sprintf(buffer, "LoLa/");
-	
-	if(ncl>1){
-	    afile<<buffer<<"LoLa"<<"_"<<ncl<<"_"<<n+1<<".txt\n";
-	} else if (ncl==1){
-	    afile<<buffer<<"LoLa"<<"_"<<ncl<<".txt\n";
-	}
-    }
-    afile.close();
-}
 
 void print_EM_pwm(int ncl, double ***EM_pwm, double *wcl)
 {
@@ -1257,7 +1049,7 @@ void print_EM_pwm(int ncl, double ***EM_pwm, double *wcl)
 	fprintf(F, "PWM_%d_%d\t%.6f\n", ncl, n+1, wcl[n]);
 	for(int j=0; j<N; j++) {
 	    fprintf(F, "%c\t", letter[j]);
-	    for(int s=0; s<naa; s++) {
+	    for(int s=0; s<naa_core; s++) {
 		if(1.0*EM_pwm[n][s][j]*N>0.000001)
 		    fprintf(F, "%.6f\t", 1.0*EM_pwm[n][s][j]*N);
 		else
@@ -1302,31 +1094,27 @@ double loglikelihood(double **eprior, double ***EM_pwm, double *wcl, double *LL,
     double LLer=0;
     tLL=0;
     for(int j=0; j<kp; j++) {
-	if(best_comp[j]>=0) {
-	    p=0;
-	    for(int n=0; n<ncl; n++) {
-		sp=1;
-		for(int s=0; s<naa; s++) {
-		    if(peptide[s][j]<N)
-			sp=sp*EM_pwm[n][s][peptide[s][j]];
-		    else
-			sp=sp*1.0/N;
-		}
-		p=p+wcl[n]*sp;
+	p=0;
+	for(int n=0; n<ncl+trash; n++) {
+	    sp=1;
+	    for(int s=0; s<naa_core; s++) {
+		if(peptide[j][s]<N)
+		    sp=sp*EM_pwm[n][s][peptide[j][s]];
+		else
+		    sp=sp*1.0/N;
 	    }
-	    tLL=tLL+log(p);
+	    p=p+wcl[n]*sp;
 	}
+	tLL=tLL+log(p);
     }
 
     sLL[ncl]=tLL;
     //add the prior
-    for(int n=0; n<ncl; n++) {
-	for(int s=0; s<naa; s++) {
+    for(int n=0; n<ncl+trash; n++) {
+	for(int s=0; s<naa_core; s++) {
 	    for(int tj=0; tj<N; tj++) {
 		if(EM_pwm[n][s][tj]>0)
 		    tLL=tLL+eprior[n][s]*log(EM_pwm[n][s][tj]);
-		if(EM_pwm[n][s][tj]==0 && eprior[n][s]!=0)
-		    cout<<"log(0)\n";
 	    }
 	}
     }
@@ -1350,29 +1138,27 @@ void expectation(double ***EM_pwm, double *wcl, double **resp, int ncl)
     double gm;
 
     for(int j=0; j<kp; j++) {
-	if(best_comp[j]>=0) {
-	    for(int n=0; n<ncl; n++) {
-		resp[j][n]=1*wcl[n];
-		for(int s=0; s<naa; s++) {
-		    if(peptide[s][j]<N)
-			resp[j][n]=resp[j][n]*EM_pwm[n][s][peptide[s][j]];
-		    else {
-			resp[j][n]=resp[j][n]*1.0/N;
-		    }
+	for(int n=0; n<ncl+trash; n++) {
+	    resp[j][n]=1*wcl[n];
+	    for(int s=0; s<naa_core; s++) {
+		if(peptide[j][s]<N)
+		    resp[j][n]=resp[j][n]*EM_pwm[n][s][peptide[j][s]];
+		else {
+		    resp[j][n]=resp[j][n]*1.0/N;
 		}
 	    }
-	    normalize(resp[j], ncl);
 	}
+	normalize(resp[j], ncl+trash);
     }
 }
 
 //Maximize the Log Likelihood (M-step), taking the responsibilities computed at the E-step.
 //The maximization can be done analytically using the lagrange Multipliers and is implemented as such
-void maximization(double **eprior, double **resp, double ***EM_pwm, double *wcl, double min_error, int ncl)
+void maximization(double **eprior, double **resp, double ***EM_pwm, double *wcl, int ncl)
 {
 
     //Update the mixing coefficients
-    for(int n=0; n<ncl; n++) {
+    for(int n=0; n<ncl+trash; n++) {
 	wcl[n]=0;
 	for(int j=0; j<kp; j++) {
 	    wcl[n]=wcl[n]+resp[j][n];
@@ -1382,12 +1168,12 @@ void maximization(double **eprior, double **resp, double ***EM_pwm, double *wcl,
 
     //Update the model coefficient, i.e. the PWM entries
     for(int n=0; n<ncl; n++) {
-	for(int s=0; s<naa; s++) {
+	for(int s=0; s<naa_core; s++) {
 	    for(int p=0; p<N; p++) {
 		EM_pwm[n][s][p]=eprior[n][s];
 		//sum over all peptides that have letter p at position s, excluding the singletons
 		for(int j=0; j<kp; j++) {
-		    if(peptide[s][j]==p) {
+		    if(peptide[j][s]==p) {
 			EM_pwm[n][s][p]=EM_pwm[n][s][p]+resp[j][n];
 		    }
 		}
@@ -1410,8 +1196,8 @@ void compute_eprior(double **eprior, int ncl)
     double rc;
 
 
-    for(int n=0; n<ncl; n++) {
-	for(int s=0; s<naa; s++) {
+    for(int n=0; n<ncl+trash; n++) {
+	for(int s=0; s<naa_core; s++) {
 	    for(int tj=0; tj<N; tj++) {
 		f[tj]=0;
 	    }
@@ -1441,11 +1227,504 @@ void initialize_EM(double ***EM_pwm, double *wcl, int ncl)
 
     if(ncl>0) {
 	for(int n=0; n<ncl; n++) {
-	    for(int s=0; s<naa; s++) {
+	    for(int s=0; s<naa_core; s++) {
 		EM_pwm[n][s]=prob(cl_size[n], comp_pep[n][s]);
 	    }
 	    wcl[n]=1.0*cl_size[n]/kp;
 	}
+	if(trash==1){
+	    
+	    wcl[ncl]=1.0*cl_size[ncl]/kp;
+	    for(int i=0; i<N; i++){
+		for(int s=0; s<naa_core; s++) {
+		    EM_pwm[ncl][s][i]=bias[i];
+		}
+	    }
+	}
     }
 }
 
+
+
+//Compute the Log Likelihood
+double loglikelihood_all(double ***EM_pwm, double **wcl, int ncl, int s1, int **Npos, int **Cpos)
+{
+
+    double tLL;
+    double sp, p;
+
+    //Compute the loglikelihood. The normalization on the probabilities are not included since they simply correspond to a constant factor
+
+    tLL=0;
+
+    for(int j=0; j<kp_all; j++) {
+	p=0;
+	if(naa_all[j]==s1){
+	    
+	    for(int n=0; n<ncl+trash; n++) {
+		sp=1;
+		
+		for(int s=Npos[j][n]; s<Npos[j][n]+Nterm; s++) {
+		    if(peptide_all[j][s]<N){
+			sp=sp*EM_pwm[n][s-Npos[j][n]][peptide_all[j][s]];
+		    } else
+			sp=sp*1.0/N;
+		}
+		for(int s=Cpos[j][n]; s<Cpos[j][n]+Cterm; s++) {
+		    if(peptide_all[j][s]<N){
+			sp=sp*EM_pwm[n][s-Cpos[j][n]-Cterm+naa_core][peptide_all[j][s]];
+		    }else
+			sp=sp*1.0/N;
+		}
+		p=p+wcl[s1][n]*sp;
+	    }
+	    
+	    tLL=tLL+log(p);
+	}
+    }  
+    return(tLL);
+}
+
+//compute the responsibilities (E-step)
+void expectation_all(double ***EM_pwm, double **wcl, double **resp_all, int ncl, int s1, int **Npos, int **Cpos)
+{
+
+    //Compute the prior for the actual EM_pwm
+    //***** WARNING: If we want to include the prior, we need to compute the correct normalization
+    double tp;
+    double gm;
+    int ps;
+    double tresp1;
+    double tresp2;
+    int tsC;
+    int tsN;
+    double tr;
+
+    int check=-1;
+    
+    for(int j=0; j<kp_all; j++) {
+	
+	if(naa_all[j]==s1){
+	    
+	    if(naa_all[j]<naa_core){
+		
+		for(int n=0; n<ncl+trash; n++) {
+		    resp_all[j][n]=1*wcl[s1][n];
+		    for(int s=0; s<Nterm; s++) {
+			if(peptide_all[j][s]<N){
+			    resp_all[j][n]=resp_all[j][n]*EM_pwm[n][s][peptide_all[j][s]];
+			}
+			else {
+			    resp_all[j][n]=resp_all[j][n]*1.0/N;
+			}
+		    }
+		    for(int s=naa_core-Cterm; s<naa_core; s++) {
+			ps=s-(naa_core-naa_all[j]);
+			if(peptide_all[j][ps]<N){
+			    resp_all[j][n]=resp_all[j][n]*EM_pwm[n][s][peptide_all[j][ps]];
+			}
+			else {
+			    resp_all[j][n]=resp_all[j][n]*1.0/N;
+			}
+		    }
+		    Cpos[j][n]=naa_all[j]-Cterm;
+		    Npos[j][n]=0;
+		}   
+
+	    } else if(naa_all[j]>=naa_core){
+
+		for(int n=0; n<ncl+trash; n++) {
+		    resp_all[j][n]=0;
+		    //scan all positions for the N-terminal motif
+		    for(int sN=0; sN<=naa_all[j]-naa_core; sN++){
+			
+			tresp1=wcl[s1][n];
+			for(int s=0; s<Nterm; s++) {
+			    if(peptide_all[j][s]<N){
+				tresp1=tresp1*EM_pwm[n][s][peptide_all[j][s+sN]];
+			    }
+			    else {
+				tresp1=tresp1*1.0/N;
+			    }
+			}
+			for(int s=0; s<sN; s++){
+			    tresp1=tresp1*Nterm_pen;
+			}
+			//Check all possible C-terminal motifs
+			tresp2=0;
+			tsC=0;
+			for(int sC=sN+naa_core-Cterm; sC<=naa_all[j]-Cterm; sC++){
+			    
+			    tr=1;
+			    for(int s=0; s<Cterm; s++) {
+				ps=sC+s;
+				
+				if(peptide_all[j][ps]<N){
+				    tr=tr*EM_pwm[n][naa_core-Cterm+s][peptide_all[j][ps]];
+				}
+				else {
+				    tr=tr*1.0/N;
+				}
+			    }		   
+			   
+			    for(int s=sC; s<naa_all[j]-Cterm; s++){
+				tr=tr*Cterm_pen;
+			    }
+			    if(tr>tresp2){
+				tresp2=tr;
+				tsC=sC;
+			    }
+			    
+			}
+			tresp1=tresp1*tresp2;
+			if(tresp1>resp_all[j][n]){
+			    resp_all[j][n]=tresp1;
+			    Npos[j][n]=sN;
+			    Cpos[j][n]=tsC;
+			}
+		    }
+		}
+	    }
+	    normalize(resp_all[j], ncl+trash);
+	}
+    }
+}
+
+//Maximize the Log Likelihood (M-step), taking the responsibilities computed at the E-step.
+//The maximization can be done analytically using the lagrange Multipliers and is implemented as such
+void maximization_all(double ***EM_pwm, double **wcl, double **resp_all, int ncl, int s1)
+{
+    int ct;
+    
+    //Update the mixing coefficients
+    for(int n=0; n<ncl+trash; n++) {
+	wcl[s1][n]=0;
+	ct=0;
+	for(int j=0; j<kp_all; j++) {
+	    if(naa_all[j]==s1){
+		wcl[s1][n]=wcl[s1][n]+resp_all[j][n];
+		ct++;
+	    }
+	}
+	wcl[s1][n]=1.0*wcl[s1][n]/ct;
+    }
+    
+}
+
+void predict_other_lengths(int ncl,  double ***EM_pwm, double *wcl){
+
+    ///////////
+    //Still need to implement a down-weighting for long C- or N-terminal extensions
+    //Still need to change the weight on the noise cluster for longer peptides. Ideally we should try to learn the weights for longer peptides, especially the weight of the trash cluster.
+    ///////////
+    
+    double **resp_all;
+    resp_all=new double*[kp_all];
+    int ps;
+    int ts2;
+    double tresp1, tresp2, tr;
+    int **Cpos; Cpos=new int*[kp_all];
+    int **Npos; Npos=new int*[kp_all];
+
+    double tr_wcl=0.1;
+    double **wcl_all; wcl_all=new double*[naa_max+1];
+    for(int s1=naa_min; s1<naa_max+1; s1++){
+	wcl_all[s1]=new double[ncl+trash];
+	if(s1 != naa_core){
+	    for(int n=0; n<ncl+trash; n++){
+		wcl_all[s1][n]=1.0/(ncl+trash);
+	    }
+	} else {
+	    for(int n=0; n<ncl+trash; n++){
+		wcl_all[s1][n]=wcl[n];
+	    }
+	}
+    }
+
+    for(int j=0; j<kp_all; j++){
+	Cpos[j]=new int[ncl+trash];
+	Npos[j]=new int[ncl+trash];
+	resp_all[j]=new double[ncl+1];
+	for(int n=0; n<ncl+trash; n++){
+	    Cpos[j][n]=naa_all[j]-Cterm;
+	    Npos[j][n]=0;
+	}
+	for(int n=0; n<ncl; n++){
+	    resp_all[j][n]=1.0/(ncl+trash);
+	}
+	if(trash==1){
+	    resp_all[j][ncl]=1.0/(ncl+trash);
+	} else {
+	    resp_all[j][ncl]=0;
+	}
+    }
+    
+    double LLerror=1000;
+    double min_error=0.00001;
+
+    double LL;
+    double sLL;
+
+    int *size;
+    size=new int[naa_max+1];
+    for(int s1=naa_min; s1<naa_max+1; s1++){
+	size[s1]=0;
+    }
+    for(int i=0; i<kp_all; i++){
+	size[naa_all[i]]++;
+    }
+    
+    //////////////
+    //Compute the weights by maximizing the log-likelihood
+    //////////////
+    
+    for(int s1=naa_min; s1<naa_max+1; s1++){
+
+	if(s1 != naa_core){
+
+	    if(size[s1]>0){
+		LLerror=1000;
+		sLL=loglikelihood_all(EM_pwm, wcl_all, ncl, s1, Npos, Cpos);
+		
+		while(LLerror>min_error) {
+		    
+		    
+		    expectation_all(EM_pwm, wcl_all, resp_all, ncl, s1, Npos, Cpos);
+		    maximization_all(EM_pwm, wcl_all, resp_all,ncl,  s1);
+		    LL=loglikelihood_all(EM_pwm, wcl_all,ncl, s1, Npos, Cpos);
+		    LLerror=absv(LL-sLL);
+		    
+		    sLL=LL;
+		    
+		}
+	    }
+	    
+	} else {
+
+	    ////////
+	    //This is the special case of the 9-mer where we take the whole PWMs
+	    ////////
+	    
+	    for(int j=0; j<kp_all; j++){
+		if(naa_all[j]==naa_core){
+		    for(int n=0; n<ncl+trash; n++) {
+			resp_all[j][n]=1*wcl[n];
+			for(int s=0; s<naa_core; s++) {
+			    if(peptide_all[j][s]<N)
+				resp_all[j][n]=resp_all[j][n]*EM_pwm[n][s][peptide_all[j][s]];
+			    else {
+				resp_all[j][n]=resp_all[j][n]*1.0/N;
+			    }
+			}
+			Cpos[j][n]=naa_core-Cterm;
+			Npos[j][n]=0;	
+		    }
+		    
+		    normalize(resp_all[j], ncl+trash);
+		}
+	    }
+	    
+	}
+
+    }
+
+    
+    
+    
+    char buffer [4096];
+    FILE *F;
+    int ct, pmax;
+    double max;
+    char file [4096];
+
+   
+    int *cluster;
+    cluster=new int[kp_all];
+    int t;
+    int **size_cluster;
+    
+    size_cluster=new int*[naa_max+1];
+    for(int s=0; s<naa_max+1; s++){
+	size_cluster[s]=new int[ncl+trash];
+	for(int n=0; n<ncl+trash; n++){
+	    size_cluster[s][n]=0;
+	}
+    }
+    
+    sprintf(buffer, "%s/responsibility/resp_%d.txt", out_dir, ncl);
+    F=fopen(buffer, "w");
+    fprintf(F, "Peptide\t");
+    for(int n=0; n<ncl; n++){
+	fprintf(F, "%d\t", n+1);
+    }
+    fprintf(F, "Trash\tLength");
+   
+    for(int n=0; n<ncl; n++){
+	fprintf(F, "\tStart_%d\tEnd_%d", n+1, n+1);
+    }
+    fprintf(F, "\n");
+
+    
+    for(int j=0; j<kp_all; j++){
+
+	
+	
+	for(int s=0; s<naa_all[j]; s++){
+	    if(peptide_all[j][s] != N)  //Do not print gaps (actually it's better to keep them).
+		fprintf(F, "%c", letter[peptide_all[j][s]]);
+	    else
+		fprintf(F, "-");
+	}
+	
+	for(int n=0; n<ncl+trash; n++){
+	    if(resp_all[j][n]>0.000001)
+		fprintf(F, "\t%.6f", resp_all[j][n]);
+	    else
+		fprintf(F, "\t%.6f", 0.000001);
+	}
+	if(trash==0){
+	    fprintf(F, "\t%.6f", 0.000000);
+	}
+	max=-1;
+	for(int n=0; n<ncl+trash; n++){
+	    if(resp_all[j][n]>max){
+		max=resp_all[j][n];
+		cluster[j]=n;
+	    }
+	}
+	size_cluster[naa_all[j]][cluster[j]]++;
+	fprintf(F, "\t%d", naa_all[j]);
+	for(int n=0; n<ncl; n++){
+	    fprintf(F, "\t%d\t%d", Npos[j][n]+1, Cpos[j][n]+Cterm);
+	}
+	fprintf(F, "\n");
+    }
+    fclose(F);
+
+
+    //Print the weights
+    sprintf(buffer, "%s/weights/weights_%d.txt", out_dir, ncl);
+    F=fopen(buffer, "w");
+    fprintf(F, "Length\tN\t");
+    for(int n=0; n<ncl; n++){
+	fprintf(F, "%d_weight\t", n+1);
+    }
+    fprintf(F, "Trash_weight\t");
+    for(int n=0; n<ncl; n++){
+	fprintf(F, "%d_distr\t", n+1);
+    }
+    fprintf(F, "Trash_distr\n");
+
+    int *size_cl;
+    size_cl=new int[ncl+trash];
+    for(int n=0; n<ncl+trash; n++){
+	size_cl[n]=0;
+	for(int s1=naa_min; s1<naa_max+1; s1++){
+	    size_cl[n]=size_cl[n]+size_cluster[s1][n];
+	}
+    }
+    double *w_cl;
+    w_cl=new double[ncl+trash];
+    for(int n=0; n<ncl+trash; n++){
+	w_cl[n]=0;
+	for(int s1=naa_min; s1<naa_max+1; s1++){
+	    w_cl[n]=w_cl[n]+size[s1]*wcl_all[s1][n];
+	}
+    }
+    
+    for(int s1=naa_min; s1<naa_max+1; s1++){
+	fprintf(F, "%d\t%d", s1, size[s1]);
+	for(int n=0; n<ncl+trash; n++){
+	    if(size[s1]>0)
+		fprintf(F, "\t%.6f", wcl_all[s1][n]);
+	    else
+		fprintf(F, "\t%.6f", 0.0);
+	}
+	if(trash==0){
+	    fprintf(F, "\t%.6f", 0.0);
+	}
+
+	for(int n=0; n<ncl+trash; n++){
+	    if(size[s1]>0)
+		fprintf(F, "\t%.6f", 1.0*wcl_all[s1][n]*size[s1]/w_cl[n]);
+	    else
+		fprintf(F, "\t%.6f", 0.0);
+	}
+	if(trash==0){
+	    fprintf(F, "\t%.6f", 0.0);
+	}
+	fprintf(F, "\n");
+    }
+    fclose(F);
+    
+    
+
+    //**********
+    //Now create the logos for all peptide length
+    //**********
+
+    for(int s1=naa_min; s1<=naa_max; s1++){
+
+	if(ncl==1){
+	    sprintf(buffer, "%s/project.txt", out_dir);
+	    afile.open(buffer, std::ios_base::app);
+	} else if(ncl>1){
+	    sprintf(buffer, "%s/EM_project.txt", out_dir);
+	    afile.open(buffer, std::ios_base::app);
+	}
+	
+	for(int n=0; n<ncl+trash; n++){
+	    ct=0;
+	    if(n<ncl){
+		sprintf(file, "%s/LoLa/LoLa_L%d_%d_%d.txt", out_dir, s1, ncl, n+1);
+	    } else if(n==ncl){
+		sprintf(file, "%s/LoLa/LoLa_L%d_%d_Trash.txt", out_dir, s1, ncl);
+	    }
+	    
+	    F=fopen(file, "w");
+	
+	    
+	    if(n==ncl){
+		fprintf(F, "Gene Name	LoLa_L%d_%d_Trash\nAccession	Refseq:1\nOrganism	H\nNCBITaxonomyID	1\nDomain Number	%d\nDomain Type	HLA\nInterpro ID	1\nTechnique	1\nDomain sequence	A\nDomain Range	1-1\nComment\t\nPeptideName	Peptide	CloneFrequency	QuantData	ExternalIdentifier\n", s1, ncl, size_cluster[s1][n]);
+	    } else if(n<ncl){
+		fprintf(F, "Gene Name	LoLa_L%d_%d_%d\nAccession	Refseq:1\nOrganism	H\nNCBITaxonomyID	1\nDomain Number	%d\nDomain Type	HLA\nInterpro ID	1\nTechnique	1\nDomain sequence	A\nDomain Range	1-1\nComment\t\nPeptideName	Peptide	CloneFrequency	QuantData	ExternalIdentifier\n", s1, ncl, n+1, size_cluster[s1][n]);
+	    }
+	    
+	    if(size_cluster[s1][n]>0){
+	    
+		
+		//Build the  sequence list
+		t=0;
+		for(int j=0; j<kp_all; j++) {
+		    if(naa_all[j]==s1 && cluster[j]==n){
+			fprintf(F, "%d\t", t+1);
+			for(int s=0; s<naa_all[j]; s++) {
+			    fprintf(F, "%c", letter[peptide_all[j][s]]);
+			}
+			fprintf(F, "\t1\n");
+			t++;
+		    }	    
+		}
+	    } else if(size_cluster[s1][n]==0){
+		fprintf(F, "%d\tEMPTY", 1);
+		for(int s=6; s<naa_core; s++) {
+		    fprintf(F, "X");
+		}
+		fprintf(F, "\t1\n");
+	    }
+	    fclose(F);
+	    sprintf(buffer, "LoLa/");
+	    
+	    
+	    if(n<ncl){
+		afile<<buffer<<"LoLa_L"<<s1<<"_"<<ncl<<"_"<<n+1<<".txt\n";
+	    } else if(n==ncl){
+		afile<<buffer<<"LoLa_L"<<s1<<"_"<<ncl<<"_Trash.txt\n";
+	    }
+	   
+	}
+	afile.close();
+    
+    }
+    
+}

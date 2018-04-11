@@ -10,6 +10,9 @@
 #Take all files in responsibility folder
 $d=$ARGV[0]."/responsibility/";
 $bkg_path=$ARGV[1];
+$naa_min=$ARGV[2];
+$naa_max=$ARGV[3];
+$trash=$ARGV[4];
 
 opendir($dir, $d);
 @file_list=();
@@ -55,59 +58,58 @@ foreach $FILE (@file_list) {
     #Create the logo for all peptides based on a clustering of the peptides
     #There can be a problem since gaps are just removed in Seq2Logo (clearly not optimal), but it works well if no alignment is required.
     #However, the pseudocount can be added, so this is useful to compare from sequences directly analyzed with Seq2Logo
-    open IN, $d.$FILE, or die;
-    $l=<IN>;
+
+    for ($s1=$naa_min; $s1<=$naa_max; $s1++) {
 	
-    @val=();
+	open IN, $d.$FILE, or die;
+	$l=<IN>;
 	
-    while ($l=<IN>) {
-	#chomp($l);
-	$l =~ s/\r?\n$//;
+	@val=();
+	@seq=();
+	@class=();
+	
+	while ($l=<IN>) {
+	    #chomp($l);
+	    $l =~ s/\r?\n$//;
 	    
-	@a=split(' ', $l);
+	    @a=split(' ', $l);
+
+	    if (length($a[0]) == $s1 ) {
 	    
-	$max=0;
-	$pmax=0;
-	$N=scalar(@a);
-	for ($i=1; $i<$N; $i++) {
-	    if ($a[$i]>$max) {
-		$max=$a[$i];
-		$pmax=$i;
+		$max=0;
+		$pmax=0;
+		for ($i=1; $i<=$Np+$trash; $i++) {
+		    if ($a[$i]>$max) {
+			$max=$a[$i];
+			$pmax=$i;
+		    }
+		    $val[$i]=$val[$i]+$a[$i];
+		}
+		
+		push @seq, $a[0];
+		push @class, $pmax;
 	    }
-	    $val[$i]=$val[$i]+$a[$i];
+	    
 	}
-	    
-	push @seq, $a[0];
-	push @class, $pmax;
-	    
-    }
-    close IN;
+	close IN;
 
 
-    if (! -d "$ARGV[0]/Seq2Logo") {
-	system("mkdir $ARGV[0]/Seq2Logo");
-    }
-	
-    if ($Np==1) {
-	open OUT, ">$ARGV[0]/Seq2Logo/cluster_1.fa";
-	for ($j=0; $j<scalar(@seq); $j++) {
-	    print OUT ">pep\n$seq[$j]\n";
-	}
-	$ct0=scalar @seq;
-	    
-	system("Seq2Logo.py -f $ARGV[0]/Seq2Logo/cluster_1.fa -o $ARGV[0]/Seq2Logo/cluster_1 -y $y:4.32 -b 0 --format PNG -I $I $bg_freq");
-	system("cp $ARGV[0]/Seq2Logo/cluster_1-001.png $ARGV[0]/Seq2Logo/Seq2Logo_1-$ct0.png");
-	    
-	    
-    } elsif ($Np>1) {
+
 	if (! -d "$ARGV[0]/Seq2Logo/") {
 	    system("mkdir $ARGV[0]/Seq2Logo");
 	}
-	for ($i=1; $i<$N; $i++) {
-	    open OUT, ">$ARGV[0]/Seq2Logo/cluster_$Np\_$i.fa";
+	for ($i=1; $i<=$Np+$trash; $i++) {
+	   
+	    if($trash==1 && $i==$Np+$trash){
+		open OUT, ">$ARGV[0]/Seq2Logo/cluster_L$s1\_$Np\_Trash.fa";
+	    } else {
+		open OUT, ">$ARGV[0]/Seq2Logo/cluster_L$s1\_$Np\_$i.fa";
+	    }
+	    
+	    
 	    $ct=0;
 	    for ($j=0; $j<scalar(@seq); $j++) {
-		    
+		
 		if ($class[$j]==$i) {
 		    print OUT ">pep\n$seq[$j]\n";
 		    $ct++;
@@ -119,12 +121,20 @@ foreach $FILE (@file_list) {
 	    if ($ct>$val[$i]+2 || $ct < $val[$i]-2) {
 		print "Many Ambiguous peptides...\n";
 	    }
-		
+	    
 	    close OUT;
-	    system("Seq2Logo.py -f $ARGV[0]/Seq2Logo/cluster_$Np\_$i.fa -o $ARGV[0]/Seq2Logo/cluster_$Np\_$i -y $y:4.32 -b 0 --format PNG -I $I $bg_freq");
-	    system("cp $ARGV[0]/Seq2Logo/cluster_$Np\_$i-001.png $ARGV[0]/Seq2Logo/Seq2Logo_$Np\_$i-$ct.png");
+
+	   
+	    if($trash==1 && $i==$Np+$trash){
+		system("Seq2Logo.py -f $ARGV[0]/Seq2Logo/cluster_L$s1\_$Np\_Trash.fa -o $ARGV[0]/Seq2Logo/cluster_L$s1\_$Np\_Trash -y $y:4.32 -b 0 --format PNG -I $I $bg_freq");
+		system("cp $ARGV[0]/Seq2Logo/cluster_L$s1\_$Np\_Trash-001.png $ARGV[0]/Seq2Logo/Seq2Logo_L$s1\_$Np\_Trash-$ct.png");
+	    } else {
+		system("Seq2Logo.py -f $ARGV[0]/Seq2Logo/cluster_L$s1\_$Np\_$i.fa -o $ARGV[0]/Seq2Logo/cluster_L$s1\_$Np\_$i -y $y:4.32 -b 0 --format PNG -I $I $bg_freq");
+		system("cp $ARGV[0]/Seq2Logo/cluster_L$s1\_$Np\_$i-001.png $ARGV[0]/Seq2Logo/Seq2Logo_L$s1\_$Np\_$i-$ct.png");
+	    }
+	    
 	}
     }
 	
-   
 }
+system("mv $ARGV[0]/Seq2Logo/Seq2Logo_L* $ARGV[0]/logos/");
