@@ -24,9 +24,9 @@
 # New features of the version 2.0
 ############
 
-This new version is tailored to the deconvolution of HLA-I peptides and includes several specifci options related to this problem. You can still use it for other types of data, but we encourage you to use our more recent algorithm (MoDec, Racle et al. 2018) that does not require peptides to be pre-aligned.
+This new version is tailored to motif deconvolution in HLA-I peptides and includes several specifci options related to this problem. You can still use it for other types of data, but you should treat separately peptides of different length.
 
-Ligands of different length can be used an input. Unsupervised motif deconvolution is  performed on ligands of the same size as the core (default: 9). Then position weight matrices built from the first 3 and last two residues are used to score ligands of other sizes, allowing for either N-terminal extensions, bulges or C-terminal extensions. The logos for each motif and each peptide length can be visualized in logos_html directory. Responsibility files include the information about the predicted position of the start and end of each of the core motifs. Please refer to MHCpExt (Guillaume et al 2018) for an analysis with statistical significance of C- or N-terminal extensions.
+Ligands of different length can be used an input. Unsupervised motif deconvolution is  performed on ligands of the same size as the core (default: 9). Then position weight matrices built from the first 3 and last two residues are used to score ligands of other sizes, allowing for either N-terminal extensions, bulges or C-terminal extensions. The logos for each motif and each peptide length can be visualized in logos_html directory. Responsibility files include the information about the predicted position of the start and end of each of the core motifs. Please refer to MHCpExt (Guillaume et al PNAS 2018) for an analysis with statistical significance of C- or N-terminal extensions.
 
 Trash cluster is also included (default '-tr 1') with amino acid frequencies given by the background distributions (default uniprot). This is useful to eliminate contaminants from MS data, especially among longer peptides.
 
@@ -42,7 +42,7 @@ MixMHCp is to be run from the terminal (command-line) on Mac and Linux. It requi
 
 2) Decompress MixMHCp2.0.tar.gz in this directory.
 
-3) Open MixMHCp file with a text editor (e.g., emacs) and put between the "" of lib_path="YOUR PATH TO MixMHCp1.1/lib FOLDER" the absolute path of the MixMHCp1.1/lib directory.
+3) Open MixMHCp file with a text editor (e.g., emacs) and put between the "" of lib_path="YOUR PATH TO MixMHCp2.0/lib FOLDER" the absolute path of the MixMHCp2.0/lib directory.
 
 4) Put the MixMHCp executable in your PATH.
 
@@ -63,8 +63,9 @@ Make sure your input files are text files and do not include any rich formatting
 
 Make sure you are in the MixMHCp2.0 directory.
 Run the command: ./MixMHCp -i test/test.txt -o test/out -m 8
+
 Apart from path names, your output should be similar to what you have in test/out_compare directory
-The test file represents HLA-I ligands identified in Bassani-Sternberg et al. MCP 2015 for SupB15WT sample. The solution with 8 motifs corresponds to the accurate deconvolution (HLA-A03:01 - motifs 6 and 8, HLA-A11:01 - motifs 1 and 7, HLA-B51:01 - motif 2, HLA-B52:01 - motif 4, HLA-C12:04 - motif 3, HLA-C14:02 - motif 5). In particular the multiple specificity of HLA-A03:01 (motif 6 and 8) is clearly visible in the 9-mers (A11:01 peptides are also split into two motifs). Splitting of motifs of HLA-A and HLA-B alleles in order to detect those from HLA-C alleles is a frequent situation when analyzing HLA peptidomics data.
+The test file represents HLA-I ligands identified in Bassani-Sternberg et al. MCP 2015 in SupB15WT sample. The solution with 8 motifs corresponds to the accurate deconvolution (HLA-A03:01 - motifs 6 and 8, HLA-A11:01 - motifs 1 and 7, HLA-B51:01 - motif 2, HLA-B52:01 - motif 4, HLA-C12:04 - motif 3, HLA-C14:02 - motif 5). In particular the multiple specificity of HLA-A03:01 (motif 6 and 8) is clearly visible in the 9-mers (A11:01 peptides are also split into two motifs). Splitting of motifs of HLA-A and HLA-B alleles in order to detect those from HLA-C alleles is a frequent situation when analyzing HLA peptidomics data.
 
 
 
