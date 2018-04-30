@@ -11,7 +11,7 @@
 # basis, without warranty of any kind.
 #
 # FOR-PROFIT USERS
-# If you plan to use MixMHCp (version 1.0) in any for-profit
+# If you plan to use MixMHCp (version 2.0) in any for-profit
 # application, you are required to obtain a separate  license.
 # To do so, please contact eauffarth@licr.org or lfoit@licr.org at the Ludwig Institute for  Cancer Research Ltd.
 #
@@ -36,7 +36,7 @@ using namespace std;
 
 //Functions
 
-void init_parameters(int a, int b, int c);
+void init_parameters(int a);
 
 void import_alignment(char * alignment_dir);
 
@@ -96,7 +96,6 @@ int ncl_max;  //Maximum number of PWMs
 int naa_max;
 int naa_min;
 fstream afile;
-int decide_comp_number;   //1: the number of PWMs are fixed by the user. 0: The number of PWMs is to be found by the algorithm
 char * out_dir;
 double * bias;
 double pseudo_count;
@@ -118,7 +117,7 @@ double Nterm_pen;
 
 int main(int argc, char ** argv)
 {
-    if (argc < 5) {
+    if (argc < 3) {
 	cout << "Invalid arguments. Run through MixMHCp." << endl;
 	exit(2);
     }
@@ -128,7 +127,7 @@ int main(int argc, char ** argv)
     
     int bs;
      
-    for (int i=4; i<argc; i+=2) {
+    for (int i=2; i<argc; i+=2) {
 	
 	if (strcmp(argv[i], "-d") == 0) {
 	    //loads the param -d, out_dir
@@ -140,29 +139,21 @@ int main(int argc, char ** argv)
 	    bs=atoi(argv[i+1]);
 	}
  	else if (strcmp(argv[i], "-a") == 0) {
-	    //loads the param -b, background frequencies
 	    strcpy(alphabet, argv[i+1]);
 	}
   	else if (strcmp(argv[i], "-tr") == 0) {
-	    //loads the param -b, background frequencies
 	    trash=atoi(argv[i+1]);
 	}
   	else if (strcmp(argv[i], "-lc") == 0) {
-	    //loads the param -b, background frequencies
 	    naa_core=atoi(argv[i+1]);
 	}
     }
- 
-    /*cout<<"MixMHCp input command line:\n";
-    for(int i=0; i<argc; i++)
-	cout<<argv[i]<<" ";
-	cout<<endl<<endl;*/
 
     cout<<"Trash: "<<trash<<endl;
     cout<<"Core length: "<<naa_core<<endl;
     
 
-    init_parameters(atoi(argv[1]), atoi(argv[2]), atoi(argv[3]));
+    init_parameters(atoi(argv[1]));
     import_alignment(alignment_dir);
     import_bias(out_dir, bs);
     
@@ -176,7 +167,7 @@ int main(int argc, char ** argv)
 
 
 
-void init_parameters(int a, int b, int c)
+void init_parameters(int a)
 {
 
     //naa_core=9; //This should be passed as an argument
@@ -187,27 +178,12 @@ void init_parameters(int a, int b, int c)
     Cterm_pen=0.2;
     Nterm_pen=0.05;
     
-    //Peptide
-    if( a==0 ){
-	N=strlen(alphabet);
-	letter=new char[N+1];
-	strcpy(letter, alphabet);
-    }
-    
-    if(b==0){
-	decide_comp_number=0; //1: the number of PWMs are fixed by the user. 0: The number of PWMs is to be found by the algorithm
-	if(c==0){
-	    ncl_max=10; //Maximal number of clusters
-	}
-	if(c>0){
-	    ncl_max=c;
-	}
-    }
-    if(b>0){
-	decide_comp_number=b;
-	ncl_max=b; 
-    }
-
+    N=strlen(alphabet);
+    letter=new char[N+1];
+    strcpy(letter, alphabet);
+        
+    ncl_max=a;
+	
     //This is the pseudo_count used in computing KLD (same values as in GibbsCluster).
     pseudo_count=200;
     
@@ -617,7 +593,8 @@ double test_KLD(double **resp, int ncl){
 	}
     }
     make_cluster_pwm(-1, ncl+trash, cluster_pwm, resp);
- 
+    
+    
     double ***cl_pwm;
     cl_pwm=new double**[ncl+trash];
     for(int n=0; n<ncl+trash; n++) {
@@ -667,7 +644,16 @@ double test_KLD(double **resp, int ncl){
 		}
 	    }
 	}
-
+	
+	//Keep flat PWMs for the trash cluster
+	if(trash == 1){
+	    for(int s=0; s<naa_core; s++){
+		for(int p=0; p<N; p++){
+		    cl_pwm[ncl][s][p]=bias[p];
+		}
+	    }
+	}
+	
 	//Compute the scores with each PWM
 	for(int n=0; n<ncl+trash; n++) {
 	    Sscore[n]=0;
@@ -749,7 +735,7 @@ void make_cluster_pwm(int si, int ncl, double ***m, double **resp){
 		    cl=n;
 		}
 	    }
-	
+	    
 	    for(int s=0; s<naa_core; s++){
 		if(peptide[j][s] != N){
 		    m[cl][s][peptide[j][s]]++;
@@ -888,26 +874,26 @@ void import_bias(char * out_dir, int bs){
     bias=new double[N];
     
     if(bs==1){
-	bias[0]=0.074; // A
-	bias[1]=0.025; // C
-	bias[2]=0.054; // D
-	bias[3]=0.054; // E
-	bias[4]=0.047; // F
-	bias[5]=0.074; // G
-	bias[6]=0.026; // H
-	bias[7]=0.068; // I
-	bias[8]=0.058; // K
-	bias[9]=0.099; // L
-	bias[10]=0.025; // M
-	bias[11]=0.045; // N
-	bias[12]=0.039; // P
-	bias[13]=0.034; // Q
-	bias[14]=0.052; // R
-	bias[15]=0.057; // S
-	bias[16]=0.051; // T
-	bias[17]=0.073; // V
-	bias[18]=0.013; // W
-	bias[19]=0.032; // Y
+	bias[0]=0.0702; // A
+	bias[1]=0.0230; // C
+	bias[2]=0.0473; // D
+	bias[3]=0.0710; // E
+	bias[4]=0.0365; // F
+	bias[5]=0.0657; // G
+	bias[6]=0.0263; // H
+	bias[7]=0.0433; // I
+	bias[8]=0.0572; // K
+	bias[9]=0.0996; // L
+	bias[10]=0.0213; // M
+	bias[11]=0.0359; // N
+	bias[12]=0.0631; // P
+	bias[13]=0.0477; // Q
+	bias[14]=0.0564; // R
+	bias[15]=0.0833; // S
+	bias[16]=0.0536; // T
+	bias[17]=0.0597; // V
+	bias[18]=0.0122; // W
+	bias[19]=0.0267; // Y
 	cout << "Background: Uniprot" << endl;
     } else if(bs==2){
 	
@@ -1026,10 +1012,12 @@ void import_alignment(char * alignment_dir)
 	    ct++;
 	}
     }
+
+
+
+
     
-    //Remove the positions with very low specificity on both sides of the motif
-    //remove_columns(tpeptide, tnaa);
-  
+
 }
 
 
@@ -1340,7 +1328,7 @@ void expectation_all(double ***EM_pwm, double **wcl, double **resp_all, int ncl,
 			
 			tresp1=wcl[s1][n];
 			for(int s=0; s<Nterm; s++) {
-			    if(peptide_all[j][s]<N){
+			    if(peptide_all[j][s+sN]<N){
 				tresp1=tresp1*EM_pwm[n][s][peptide_all[j][s+sN]];
 			    }
 			    else {
@@ -1410,6 +1398,7 @@ void maximization_all(double ***EM_pwm, double **wcl, double **resp_all, int ncl
     }
     
 }
+
 
 void predict_other_lengths(int ncl,  double ***EM_pwm, double *wcl){
 
@@ -1488,7 +1477,6 @@ void predict_other_lengths(int ncl,  double ***EM_pwm, double *wcl){
 		
 		while(LLerror>min_error) {
 		    
-		    
 		    expectation_all(EM_pwm, wcl_all, resp_all, ncl, s1, Npos, Cpos);
 		    maximization_all(EM_pwm, wcl_all, resp_all,ncl,  s1);
 		    LL=loglikelihood_all(EM_pwm, wcl_all,ncl, s1, Npos, Cpos);
@@ -1562,6 +1550,9 @@ void predict_other_lengths(int ncl,  double ***EM_pwm, double *wcl){
     for(int n=0; n<ncl; n++){
 	fprintf(F, "\tStart_%d\tEnd_%d", n+1, n+1);
     }
+    if(trash==1){
+	fprintf(F, "\tStart_Trash\tEnd_Trash", n+1, n+1);
+    }
     fprintf(F, "\n");
 
     
@@ -1594,7 +1585,7 @@ void predict_other_lengths(int ncl,  double ***EM_pwm, double *wcl){
 	}
 	size_cluster[naa_all[j]][cluster[j]]++;
 	fprintf(F, "\t%d", naa_all[j]);
-	for(int n=0; n<ncl; n++){
+	for(int n=0; n<ncl+trash; n++){
 	    fprintf(F, "\t%d\t%d", Npos[j][n]+1, Cpos[j][n]+Cterm);
 	}
 	fprintf(F, "\n");
@@ -1646,7 +1637,8 @@ void predict_other_lengths(int ncl,  double ***EM_pwm, double *wcl){
 
 	for(int n=0; n<ncl+trash; n++){
 	    if(size[s1]>0)
-		fprintf(F, "\t%.6f", 1.0*wcl_all[s1][n]*size[s1]/w_cl[n]);
+		//fprintf(F, "\t%.6f", 1.0*wcl_all[s1][n]*size[s1]/w_cl[n]);
+		fprintf(F, "\t%d", size_cluster[s1][n]);
 	    else
 		fprintf(F, "\t%.6f", 0.0);
 	}

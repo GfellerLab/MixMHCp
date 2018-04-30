@@ -74,7 +74,7 @@ if ( -e  "$outdir/KLD/best_ncl.txt") {
     close IN;
 }
 
-
+my @full_size=([]);
 
 my @list=();
 
@@ -145,6 +145,7 @@ foreach $s (@list) {
 		    my @c=split('\/', $multiple_list[$i]);
 		    push @multiple, $c[(scalar @c)-1];
 		    push @multiple_size, $b[0];
+		    $full_size[$sm][$tsm]=$full_size[$sm][$tsm]+$b[0];
 		    $size=$size+$b[0];
 		}
 	    }
@@ -184,10 +185,11 @@ foreach $s (@list) {
 		    $p=0;
 		}
 		my $ti=$i+1;
-		if ($multiple_size[$i]>=0) {
+		if ($multiple_size[$i]>0) {
 		    printf OUT '<div class="float"><img src="'.$logo_path.$logo_dir.'/'.$multiple[$i].'" width="250" height="150"><p>'.$ti.'  -  '.$multiple_size[$i].' ('.$p.')</p></div>'."\n";
 		} else {
 		    printf OUT '<div class="float"><img src="" width="250" height="150"><p>'.$ti.'  -  '.$multiple_size[$i].' ('.$p.')</p></div>'."\n";
+		    #printf OUT '<div class="float">EMPTY<p>'.$ti.'  -  '.$multiple_size[$i].' ('.$p.')</p></div>'."\n";
 		}
 	    }
 	    if (scalar @trash>0) {
@@ -196,7 +198,13 @@ foreach $s (@list) {
 		} else {
 		    $p=0;
 		}
-		printf OUT '<div class="float"><img src="'.$logo_path.$logo_dir.'/'.$trash[0].'" width="250" height="150"><p>Trash  -  '.$trash_size[0].' ('.$p.')</p></div>'."\n";
+		if ($trash_size[0]>0) {
+		    printf OUT '<div class="float"><img src="'.$logo_path.$logo_dir.'/'.$trash[0].'" width="250" height="150"><p>Trash  -  '.$trash_size[0].' ('.$p.')</p></div>'."\n";
+		} else {
+		    printf OUT '<div class="float"><img src="" width="250" height="150"><p>Trash  -  '.$trash_size[0].' ('.$p.')</p></div>'."\n";
+		    #printf OUT '<div class="float">EMPTY<p>Trash  -  '.$trash_size[0].' ('.$p.')</p></div>'."\n";
+		}
+		    
 	    }
 	    print OUT '<div class="spacer">&nbsp;</div>'."\n";
 
@@ -220,7 +228,7 @@ foreach $s (@list) {
 			$p=0;
 		    }
 		    my $ti=$i+1;
-		    if ($multiple_size[$i]>=0) {
+		    if ($multiple_size[$i]>0) {
 		    printf OUT2 '<div class="float"><img src="'.$logo_dir.'/'.$multiple[$i].'" width="250" height="150"><p>'.$ti.'  -  '.$multiple_size[$i].' ('.$p.')</p></div>'."\n";
 		} else {
 		    printf OUT2 '<div class="float"><img src="" width="250" height="150"><p>'.$ti.'  -  '.$multiple_size[$i].' ('.$p.')</p></div>'."\n";
@@ -232,7 +240,11 @@ foreach $s (@list) {
 		    }else {
 			$p=0;
 		    }
-		    printf OUT2 '<div class="float"><img src="'.$logo_dir.'/'.$trash[0].'" width="250" height="150"><p>Trash  -  '.$trash_size[0].' ('.$p.')</p></div>'."\n";
+		    if($trash_size[0]>0){
+			printf OUT2 '<div class="float"><img src="'.$logo_dir.'/'.$trash[0].'" width="250" height="150"><p>Trash  -  '.$trash_size[0].' ('.$p.')</p></div>'."\n";
+		    } else {
+			printf OUT2 '<div class="float"><img src="" width="250" height="150"><p>Trash  -  '.$trash_size[0].' ('.$p.')</p></div>'."\n";
+		    }
 		}
 		print OUT2 '<div class="spacer">&nbsp;</div>'."\n";
 		
@@ -279,6 +291,9 @@ for(my $i=1; $i<=$ncl; $i++){
     
     for(my $j=1; $j<=$i; $j++){
 	printf OUT '<div class="float"><img src="./weights/plots/lg_'.$i.'_'.$j.'.png" width="200" height="200"></div>'."\n";
+    }
+    if($trash==1){
+	printf OUT '<div class="float"><img src="./weights/plots/lg_'.$i.'_Trash.png" width="200" height="200"></div>'."\n";
     }
     print OUT '<div class="spacer">&nbsp;</div>'."\n";
     

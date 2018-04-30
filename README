@@ -6,7 +6,7 @@
 #
 # To cite MixMHCp2.0, please refer to:
 # - Bassani-Sternberg M and Gfeller D, Unsupervised HLA Peptidome Deconvolution Improves Ligand Prediction Accuracy and Predicts Cooperative Effects in Peptide-HLA Interactions. J. Immunol. (2016)
-# - Gfeller D et al. Peptide length distriution and multiple specificity in HLA-I ligands, bioRxiv (2018).
+# - Gfeller D et al. Peptide length distribution and multiple specificity in naturally presented HLA-I ligands, bioRxiv (2018).
 #
 # MixMHCp can be used freely by academic groups for non-commercial purposes (see license).
 # The product is provided free of charge, and, therefore, on an "as is"
@@ -24,7 +24,7 @@
 # New features of the version 2.0
 ############
 
-This new version is tailored to motif deconvolution in HLA-I peptides and includes several specific options related to this problem. You can still use it for other types of data, but you should treat separately peptides of different length.
+This new version is tailored to motif deconvolution in HLA-I peptides and includes several specific options related to this problem. You can still use it for other types of data, but you should treat separately peptides of different lengths.
 
 Ligands of different lengths can be used in input. Unsupervised motif deconvolution is performed on ligands of the same size as the core (default: 9). The other peptides are scored based on the 9-mer motifs (see below). The logos for each motif and each peptide length can be visualized in logos_html directory. Responsibility files include the information about the predicted position of the start and end of each of the core motifs. Please refer to MHCpExt (Guillaume et al PNAS 2018) for an analysis with statistical significance of C- or N-terminal extensions.
 
@@ -34,7 +34,7 @@ Peptide length distributions are plotted in length_distribution.html for each mo
 
 ############
 
-MixMHCp can be run from the terminal (command-line) on Mac and Linux. It requires perl, java, C++ and Rscript to run on your machine and be included in your path. If Rscrpit or R are not available in your path, you can manually specifiy the location of Rscript in run_MixMHCp.pl (search for 'Rscrpit').
+MixMHCp can be run from the terminal (command-line) on Mac and Linux. It requires perl, java, C++ and Rscript to run on your machine and be included in your path. If Rscrpit or R are not available in your path, you can manually specifiy the location of Rscript in run_MixMHCp.pl (search for 'Rscript').
 
 - Installing MixMHCp:
 
@@ -54,14 +54,14 @@ MixMHCp can be run from the terminal (command-line) on Mac and Linux. It require
 MixMHCp -i INPUT_FILE -o OUTPUT_DIR -m MAX_MOTIF
 Example: MixMHCp -i input.fa -o output -m 6
 
-MixMHCp requires as input fasta files with all peptides of the same length, no gaps and only amino acids.
+MixMHCp requires as input fasta files with no gaps and only standard amino acids.
 You can also use txt files with peptide sequences (lines starting with '>' are simply ignored).
 Make sure your input file and paths names do not contain blank spaces or weird characters.
 Make sure your input files are text files and do not include any rich formatting (e.g., save Excel files as tab delimited .txt files).
 
 - Test MixMHCp:
 
-Make sure you are in the MixMHCp2.0 directory adn you have manually entered the path in MixMHCp file (see point 3) in installation instructions).
+Make sure you are in the MixMHCp2.0 directory and you have manually entered the path in MixMHCp file (see point 3) in installation instructions).
 
 Run the command: ./MixMHCp -i test/test.txt -o test/out -m 8
 
@@ -81,14 +81,14 @@ The test file represents HLA-I ligands identified in Bassani-Sternberg et al. MC
 
 3) By default, the logos are plotted with the LoLa software, that is included in the package (http://baderlab.org/Software/LOLA). To plot logos with Seq2Logo (Martin Christen Frolund Thomsen; Morten Nielsen, Nucleic Acids Research 2012; 40 (W1): W281-W287), you need to have the proper license (http://www.cbs.dtu.dk/biotools/Seq2Logo/) and have Seq2Logo in your path and add in the command line '-lt Seq2Logo'. You also need 'gs' (Ghostscript) to work on your machine. If you use Seq2Logo to generate the logos, be aware that the logos do not include any random count or background frequency corrections. This is useful to explore what is in your data, but may not exactly correspond to the motifs used to build predictors.
 
+4) The logos (and the number of peptides in html files) are determined after clustering the peptides based on the largest responsibility values.
+
 5) The PWMs provided as output correspond to those optimally describing the data. They do not necessarily correspond to the best predictors, since they do not incorporate any renormalization by the background frequencies and are build with a relatively low random count. In general, for making predictions, it is better to train a predictor based on the peptides themselves (for instance by clustering the peptides based on the responsibility values).
 
 6) The optimal number of motifs is difficult to automatically determine and existing measures provide unsatisfactory results. We encourage the users to manually look at the motifs and determine the optimal number. The value provided in KLD/best_ncl.txt (first line) corresponds to the method proposed in Bassani-Sternberg and Gfeller J Immunol 2016. However, in many cases it is worth considering more motifs than this number. The KLD values printed below for each number of motifs correspond to the method developed in GibbsCluster (Andreatta et al Bioinformatics 2013). However, here as well, highest KLD values often do not correspond to the best number of motifs. For instance, in the example used for testing (test/test.txt), the motifs for the different HLA-I alleles are nicely obtained choosing 8 motifs (including multiple specificity for HLA-A03:01 and HLA-A11:01), and not 3 motifs.
 
 7) Some users reported a bug with El Capitan when calling java from the terminal. The recommanded fix can be found for instance here: http://stackoverflow.com/questions/34201990/unsupported-major-minor-version-on-mac-os-x-el-capitan/34201991#34201991. Alternatively you may use the Seq2Logo option.
 
-8) Expanded amino acid alphabet can be provided with the -a option (e.g. -a ACDEFGHIKLMNPQRSTVWYsty for phospho peptides). This allows you to use small letters for modified or non-natural amino acids. Make sure that all characters used in your input sequences are listed in the alphabet (this will determine the size of the alphabet considered by the model). By default, the 20 amino acids 'ACDEFGHIKLMNPQRSTVWY' are assumed. However, currently the logos do not show the non-standard amino acids.
+8) Trash cluster is included to remove peptides that do not match any of the inferred motifs.
 
-9) Trash cluster is included to remove peptides that do not match any of the inferred motifs.
-
-10) Motif deconvolution is only performed for peptides of lenght lcore (default: 9). Peptides of other lengths are scored based on the PWM inferred from the 9-mers, using the first 3 and last 2 positions, and allowing for N- or C-terminal extensions. However, the fraction of peptides from each motif may change substantially for different peptide lengths (either because HLA-I molecules have different length distributions, or because of more frequent contaminations in longer peptides in MS data). For this reason, the weight on each motif (including the trash motif) are inferred by Expectation Maximization for each peptide length separately. Information about these weights and the corresponding length distributions are provided in weights/ directory. The first column of the weight_n.txt files gives the peptide length, the second column gives the total number of peptides of each length, the n_weight columns give the weight of each motif, as defined in the mixture model, the n_distr columns give the peptide length distributions for each motif (i.e., weights multilpied by the number of peptides and normalized to one).
+9) Motif deconvolution is only performed for peptides of length lcore (default: 9). Peptides of other lengths are scored based on the PWM inferred from the 9-mers, using the first 3 and last 2 positions, and allowing for N- or C-terminal extensions. However, the fraction of peptides from each motif may change substantially for different peptide lengths (either because HLA-I molecules have different length distributions, or because of more frequent contaminations in longer peptides in MS data). For this reason, the weight on each motif (including the trash motif) are inferred by Expectation Maximization for each peptide length separately. Information about these weights and the corresponding length distributions are provided in weights/ directory. The first column of the weight_n.txt files gives the peptide length, the second column gives the total number of peptides of each length, the n_weight columns give the weight of each motif, as defined in the mixture model, the n_distr columns give the peptide length distributions for each motif, as obtained after clustering the peptides based on teh maximum of the responsibility values.

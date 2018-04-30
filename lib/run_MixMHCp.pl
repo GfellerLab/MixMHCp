@@ -12,7 +12,7 @@
 # basis, without warranty of any kind.
 #
 # FOR-PROFIT USERS
-# If you plan to use MixMHCp (version 1.0) in any for-profit
+# If you plan to use MixMHCp (version 2.0) in any for-profit
 # application, you are required to obtain a separate  license.
 # To do so, please contact eauffarth@licr.org or lfoit@licr.org at the Ludwig Institute for  Cancer Research Ltd.
 #
@@ -27,7 +27,7 @@ use strict;
 use File::Copy;
 
 
-my ($verbose, $output, $input, $dir, $outdir, $temp_keep, $maxncomp, $logo, $comp, $bs, $bias, $name, $logo_type, $alphabet, $lcore, $trash);  
+my ($verbose, $output, $input, $dir, $outdir, $temp_keep, $maxncomp, $logo, $comp, $bs, $bias, $name, $logo_type, $lcore, $trash);  
 
 my $MixMHCp_dir = $ARGV[0];
 
@@ -40,14 +40,27 @@ GetOptions ("i=s" => \$input,    # input file name
             "lt=s" => \$logo_type,# type of logo
             "tm" => \$temp_keep, # Don't delete temporary files
             "n=s" => \$name,
-            "al=s" => \$alphabet,
 	    "lc=i" => \$lcore,
 	    "tr=i" => \$trash,
 	    "v"  => \$verbose);  # verbose
 
-if($maxncomp>20){
-    $maxncomp=20;
+if($maxncomp>50){
+    $maxncomp=50;
+    print "Maximal number of motifs is set to 50\n";
 }
+if($maxncomp<=0){
+    print "Number of motifs must be bigger then 0"."\n";
+    exit(10);
+}
+
+if($lcore<5){
+    print "Minimal length for the core is 5"."\n";
+    exit(10);
+}
+
+
+my $alphabet="ACDEFGHIKLMNPQRSTVWY";
+
 
 my $naa_min=100;
 my $naa_max=0;
@@ -61,9 +74,6 @@ if (!($input eq "")){
     print "ERROR!"."\n";
     exit(10);
 }
-
-#Check the alphabet
-&check_alphabet($alphabet);
 
 
 ## Check whether neither input nor directory are specified
@@ -158,7 +168,7 @@ close OUT;
 #die;
 
 if($run_all==1){
-    my $command = "0 0 ".$maxncomp." -d ".$outdir." -b $bs -a ".$alphabet." -lc ".$lcore." -tr ".$trash;
+    my $command = $maxncomp." -d ".$outdir." -b $bs -a ".$alphabet." -lc ".$lcore." -tr ".$trash;
     print_and_log("Running MixMHCp..."."\n");
     my $exit_status = system($MixMHCp_dir."MixMHCp.x $command >> ".$outdir."pipeline.log 2>> ".$outdir."pipeline.log");
     if (!($exit_status == 0)){
@@ -312,26 +322,6 @@ sub check_input{
     return($exit_pep);
 }
 
-sub check_alphabet{
-
-    my $s;
-    
-    my @allowed=qw(A C D E F G H I K L M N P Q R S T V W Y a c d e f g h i k l m n p q r s t v w y);
-    my %allowed_alphabet=();
-    foreach $s (@allowed){
-	$allowed_alphabet{$s}=1;
-    }
-    
-    my @al=split('', $_[0]);
-   
-    
-    foreach $s (@al){
-	if(!exists $allowed_alphabet{$s}){
-	    print_and_log("Letter not allowed in alphabet: $s\n");
-	    die;
-	}
-    }
-}
 
 sub check_bias{
 

@@ -23,7 +23,8 @@
 
 
 # Set the resource location. This has to be manually done on your machine
-lib_path="YOUR PATH TO MixMHCp1.1/lib FOLDER"
+lib_path="YOUR PATH TO MixMHCp2.0/lib FOLDER"
+
 
 usage="Usage: MixMHCp -i INPUT -o OUTPUT -m MAX_MOTIFS"
 
@@ -46,15 +47,14 @@ Mandatory parameters:
 
 Optional parameters:
   -m, --max-pwms          Maximum number of PWMs (default: 6, max: 20)
-  -b, --bias              Specific a residue bias file (default: uniprot based background frequencies, otherwise specifiy a file)
-  -a, --alphabet          Specify your alphabet (default: ACDEFGHIKLMNPQRSTVWY, characters allowed: ACDEFGHIKLMNPQRSTVWYacdefghiklmnpqrstvwy)
+  -b, --bias              Specify a residue bias file (default: uniprot based background frequencies, otherwise specifiy a file)
 
 Options:
 
   -k, --no-clean          Keep temporary files (default: 0)
   -l, --logo              Plot the logos (default: 1)
   -lt, --logo             Logo types (either LoLa or Seq2Logo, default: LoLa)
-  -n, --name              Name of the output (only showing in the html file)
+  -n, --name              Name of the output (only shown in the html file)
   -lc, --length_core      Length of the core (default: 9). Peptides should not be longer than 10+lc
   -tr, --trash            Use a trash cluster (default: 1)
 
@@ -75,7 +75,6 @@ while [ $# -gt 0 ]; do
 		-i | --input) input=$2; shift 2;;
 		-o | --output) output=$2; shift 2;;
 		-m | --max-pwms) maxpwms=$2; shift 2;;
-		-a | --alphabet) alphabet=$2; shift 2;;
 		-k | --no-clean) noclean=-tm; shift 1;;
 		-b | --bias) bias=$2; shift 2;;
 		-l | --logo) logo=$2; shift 2;;
@@ -107,12 +106,6 @@ else
     name_file="-n Peptides";
 fi
 
-if [ -n "$alphabet" ]; then
-    alphabet_command="-al $alphabet";
-else
-    alphabet_command="-al ACDEFGHIKLMNPQRSTVWY";
-fi
-
 if [ -n "$logo_type" ]; then
     if [ $logo_type = "LoLa" ] || [ $logo_type = "Seq2Logo" ]; then
 	logo_type_command="-lt $logo_type";
@@ -142,5 +135,5 @@ output=$output/
 lib_dir=`perl -e 'use Cwd "abs_path";print abs_path(shift)' $lib`/
 
 
-perl $lib_dir/run_MixMHCp.pl $lib_dir $noclean -m $maxpwms $bias_file $input -o $output -l $logo $name_file $logo_type_command $alphabet_command -lc $lcore -tr $trash
+perl $lib_dir/run_MixMHCp.pl $lib_dir $noclean -m $maxpwms $bias_file $input -o $output -l $logo $name_file $logo_type_command -lc $lcore -tr $trash
 
