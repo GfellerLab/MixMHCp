@@ -1551,7 +1551,7 @@ void predict_other_lengths(int ncl,  double ***EM_pwm, double *wcl){
 	fprintf(F, "\tStart_%d\tEnd_%d", n+1, n+1);
     }
     if(trash==1){
-	fprintf(F, "\tStart_Trash\tEnd_Trash", n+1, n+1);
+	fprintf(F, "\tStart_Trash\tEnd_Trash");
     }
     fprintf(F, "\n");
 
