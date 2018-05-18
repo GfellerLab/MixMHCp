@@ -278,7 +278,10 @@ print OUT '<p><font size="7">'.$name.' -- Peptide length distributions</font></p
 
 print OUT '<p>'."\n";
 
-print OUT '<a href="./logos_html/logos_L'.$lcore.'.html"> logos ('.$lcore.'-mers core)</a>'."\n";
+for (my $s1=$naa_min; $s1<=$naa_max; $s1++) {
+    print OUT '<a href="./logos_html/logos_L'.$s1.'.html">'.$s1.'-mers</a>'." | \n";
+}
+print OUT '</p>'."\n";
 
 for(my $i=1; $i<=$ncl; $i++){
 
