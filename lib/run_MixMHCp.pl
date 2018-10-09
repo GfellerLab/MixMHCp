@@ -5,14 +5,14 @@
 #
 # For any question, please contact david.gfeller@unil.ch
 #
-# To cite MixMHCp, please refer to Bassani-Sternberg M and Gfeller D*, J. Immunol. (2016)
+# To cite MixMHCp (version 2.1), please refer to Bassani-Sternberg M and Gfeller D*, J. Immunol. (2016) and Solleder M et al. (2018)
 #
 # MixMHCp can be used freely by academic groups for non-commercial purposes (see license).
 # The product is provided free of charge, and, therefore, on an "as is"
 # basis, without warranty of any kind.
 #
 # FOR-PROFIT USERS
-# If you plan to use MixMHCp (version 2.0) in any for-profit
+# If you plan to use MixMHCp (version 2.1) in any for-profit
 # application, you are required to obtain a separate  license.
 # To do so, please contact eauffarth@licr.org or lfoit@licr.org at the Ludwig Institute for  Cancer Research Ltd.
 #
@@ -27,7 +27,7 @@ use strict;
 use File::Copy;
 
 
-my ($verbose, $output, $input, $dir, $outdir, $temp_keep, $maxncomp, $logo, $comp, $bs, $bias, $name, $logo_type, $lcore, $trash);  
+my ($verbose, $output, $input, $dir, $outdir, $temp_keep, $maxncomp, $logo, $comp, $bs, $bias, $name, $logo_type, $lcore, $trash, $alphabet);  
 
 my $MixMHCp_dir = $ARGV[0];
 
@@ -42,6 +42,7 @@ GetOptions ("i=s" => \$input,    # input file name
             "n=s" => \$name,
 	    "lc=i" => \$lcore,
 	    "tr=i" => \$trash,
+	    "al=s" => \$alphabet,
 	    "v"  => \$verbose);  # verbose
 
 if($maxncomp>50){
@@ -58,8 +59,9 @@ if($lcore<5){
     exit(10);
 }
 
+#Check the alphabet
+&check_alphabet($alphabet);
 
-my $alphabet="ACDEFGHIKLMNPQRSTVWY";
 
 
 my $naa_min=100;
@@ -84,7 +86,7 @@ if (($input eq "") ){
 
 if($run_all==1){
 my @remove_files=qw(project.txt pipeline.log EM_project.txt logos.html length_distribution.html);
-my @remove_dir=qw(alignment Multiple_PWMs responsibility logos_html Seq2Logo LoLa logos weights KLD);
+my @remove_dir=qw(alignment Multiple_PWMs responsibility logos_html Seq2Logo LoLa ggseqlogo logos weights KLD);
 
 my $f;
 foreach $f (@remove_files){
@@ -124,7 +126,8 @@ system("mkdir -p ".$outdir."/responsibility");
 system("mkdir -p ".$outdir."/Multiple_PWMs");
 system("mkdir -p ".$outdir."/weights");
 system("mkdir -p ".$outdir."/weights/plots");
-system("mkdir -p ".$outdir."/LoLa");
+#system("mkdir -p ".$outdir."/LoLa");
+system("mkdir -p ".$outdir."/ggseqlogo");
 if($logo==1){
     system("mkdir -p ".$outdir."/logos");
     system("mkdir -p ".$outdir."/logos_html");
@@ -157,15 +160,26 @@ if($exit_pep ne ""){
 }
 
 open OUT, ">$outdir/data/peptides.fa";
+my @len=();
 $ct=1;
 foreach $p (@pep){
    printf OUT ">$ct %d\n$p\n", length($p);
+   push @len, length($p);
 #     printf OUT ">$ct\n$p\n";
     $ct++;
 }
 close OUT;
 
+@len=uniq(@len);
+@len=sort(@len);
+
 #die;
+if( !(grep { $_ eq $lcore } @len) ){
+	print "Error: no peptides of core length in input..."."\n";
+	print "Core length: ".$lcore."\n";
+	print "Give a different core length [-lc] or double check data."."\n";
+	die;
+}
 
 if($run_all==1){
     my $command = $maxncomp." -d ".$outdir." -b $bs -a ".$alphabet." -lc ".$lcore." -tr ".$trash;
@@ -178,35 +192,35 @@ if($run_all==1){
 }
 
 
-
 #my $logo="Seq2Logo";  #This is not working well on the GUI because the path to Seq2Logo and gs cannot be found.
 #Moreover, in case of gaps, Seq2Logo.py treats them as no sequences... so this works only well if we do not align the sequences
 
 if($logo==1 && $run_all==1){
 
-    #Here we will need to create a specialized viewer for a given alphabet
-   
     my $input_type = "Protein";
-    if($logo_type eq "LoLa"){
+        
+    if($logo_type eq "ggseqlogo"){
+	my $inputType = 'pwm'; # 'resp'; 
+	print_and_log("Generating logos with ggseqlogo... "."\n");
+	system("Rscript $MixMHCp_dir/calling-ggseqlogoMOD.r $MixMHCp_dir $outdir $outdir $alphabet $maxncomp $inputType >> $outdir/pipeline.log");
+    
+
+    #} elsif ($logo_type eq "LoLa"){
 	
-	print_and_log("Generating logos..."."\n");
-	system("mkdir -p ".$outdir."logos");
-	system("java -Xmx1024m -cp ".$MixMHCp_dir."jar/aida-3.3.jar:".$MixMHCp_dir."jar/biojava-1.4a.jar:".$MixMHCp_dir."jar/brainlib-1.4.jar:".$MixMHCp_dir."jar/freehep-export-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphics2d-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-emf-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-java-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-pdf-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-ps-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-svg-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-swf-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-tests-2.1.1.jar:".$MixMHCp_dir."jar/freehep-io-2.0.2.jar:".$MixMHCp_dir."jar/freehep-swing-2.0.3.jar:".$MixMHCp_dir."jar/freehep-util-2.0.2.jar:".$MixMHCp_dir."jar/freehep-xml-2.1.MixMHCp.jar:".$MixMHCp_dir."jar/itext-2.0.2.jar:".$MixMHCp_dir."jar/jas-plotter-2.2.jar:".$MixMHCp_dir."jar/jdom-1.0.jar:".$MixMHCp_dir."jar/junit-3.8.2.jar:".$MixMHCp_dir."jar/openide-lookup-1.9-patched-1.0.jar:".$MixMHCp_dir." CreateLogo $outdir/ $input_type png $outdir F >> ".$outdir."pipeline.log");
+	#print_and_log("Generating logos..."."\n");
+	#system("mkdir -p ".$outdir."logos");
+	#system("java -Xmx1024m -cp ".$MixMHCp_dir."jar/aida-3.3.jar:".$MixMHCp_dir."jar/biojava-1.4a.jar:".$MixMHCp_dir."jar/brainlib-1.4.jar:".$MixMHCp_dir."jar/freehep-export-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphics2d-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-emf-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-java-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-pdf-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-ps-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-svg-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-swf-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-tests-2.1.1.jar:".$MixMHCp_dir."jar/freehep-io-2.0.2.jar:".$MixMHCp_dir."jar/freehep-swing-2.0.3.jar:".$MixMHCp_dir."jar/freehep-util-2.0.2.jar:".$MixMHCp_dir."jar/freehep-xml-2.1.MixMHCp.jar:".$MixMHCp_dir."jar/itext-2.0.2.jar:".$MixMHCp_dir."jar/jas-plotter-2.2.jar:".$MixMHCp_dir."jar/jdom-1.0.jar:".$MixMHCp_dir."jar/junit-3.8.2.jar:".$MixMHCp_dir."jar/openide-lookup-1.9-patched-1.0.jar:".$MixMHCp_dir." CreateLogo $outdir/ $input_type png $outdir F >> ".$outdir."pipeline.log");
 
 	
     } elsif ($logo_type eq "Seq2Logo"){
 
-	################
-	# WARNING: This part is not working now with the responsibility_all
-	################
-	
 	print_and_log("Generating Seq2Logo... "."\n");
 	system("mkdir -p ".$outdir."/Seq2Logo/");
 	#The parameters for the Logo (background frequency, pseudo-count, Shannon/KL, format... are set in Seq2Logo.pl
 	system("perl ".$MixMHCp_dir."Seq2Logo.pl $outdir  $MixMHCp_dir $naa_min $naa_max $trash >> ".$outdir."pipeline.log 2>> ".$outdir."pipeline.log");
 	
     }
-     
+    
     print_and_log("Generating HTML tables document..."."\n");
     system("perl ".$MixMHCp_dir."tablegenerator_html.pl $outdir $logo_type $name $naa_min $naa_max $maxncomp $trash $lcore");
     
@@ -225,11 +239,11 @@ if ($temp_keep == 0){
 	system("rm $outdir/project.txt");
 	system("rm $outdir/EM_project.txt");
     }
-    if($logo_type eq "LoLa"){
-	system("rm -r $outdir/LoLa");
-    } elsif ($logo_type eq "Seq2Logo"){
-       system("rm -r $outdir/Seq2Logo");
-   }
+	#system("rm -r $outdir/LoLa");
+	#system("rm -r $outdir/ggseqlogo");
+    if ($logo_type eq "Seq2Logo"){
+    	system("rm -r $outdir/Seq2Logo");
+    }
    
 }
 
@@ -322,6 +336,26 @@ sub check_input{
     return($exit_pep);
 }
 
+sub check_alphabet{
+
+    my $s;
+    
+    my @allowed=qw(A C D E F G H I K L M N P Q R S T V W Y a b c d e f g h i j k l m n o p q r s t u v w x y z);
+    my %allowed_alphabet=();
+    foreach $s (@allowed){
+	$allowed_alphabet{$s}=1;
+    }
+    
+    my @al=split('', $_[0]);
+   
+    
+    foreach $s (@al){
+	if(!exists $allowed_alphabet{$s}){
+	    print_and_log("Letter not allowed in alphabet: $s\n");
+	    die;
+	}
+    }
+}
 
 sub check_bias{
 
