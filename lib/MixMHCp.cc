@@ -4,14 +4,14 @@
 #
 # For any question, please contact david.gfeller@unil.ch
 #
-# To cite MixMHCp, please refer to Bassani-Sternberg M and Gfeller D*, J. Immunol. (2016)
+# To cite MixMHCp (version 2.1), please refer to Bassani-Sternberg M and Gfeller D*, J. Immunol. (2016) and Solleder et al. (2018)
 #
 # MixMHCp can be used freely by academic groups for non-commercial purposes (see license).
 # The product is provided free of charge, and, therefore, on an "as is"
 # basis, without warranty of any kind.
 #
 # FOR-PROFIT USERS
-# If you plan to use MixMHCp (version 2.0) in any for-profit
+# If you plan to use MixMHCp (version 2.1) in any for-profit
 # application, you are required to obtain a separate  license.
 # To do so, please contact eauffarth@licr.org or lfoit@licr.org at the Ludwig Institute for  Cancer Research Ltd.
 #
@@ -220,7 +220,7 @@ void EMsteps()
 		EM_pwm[n][s][j]=0;
 	}
     }
-    
+
     double ****full_EM_pwm;
     double **full_wcl;
     
@@ -1013,11 +1013,6 @@ void import_alignment(char * alignment_dir)
 	}
     }
 
-
-
-
-    
-
 }
 
 
@@ -1511,21 +1506,18 @@ void predict_other_lengths(int ncl,  double ***EM_pwm, double *wcl){
 		    normalize(resp_all[j], ncl+trash);
 		}
 	    }
-	    
 	}
-
     }
-
-    
-    
+   
     
     char buffer [4096];
     FILE *F;
+    FILE *F2;
     int ct, pmax;
     double max;
     char file [4096];
+    char file2 [4096];
 
-   
     int *cluster;
     cluster=new int[kp_all];
     int t;
@@ -1554,11 +1546,8 @@ void predict_other_lengths(int ncl,  double ***EM_pwm, double *wcl){
 	fprintf(F, "\tStart_Trash\tEnd_Trash");
     }
     fprintf(F, "\n");
-
     
     for(int j=0; j<kp_all; j++){
-
-	
 	
 	for(int s=0; s<naa_all[j]; s++){
 	    if(peptide_all[j][s] != N)  //Do not print gaps (actually it's better to keep them).
@@ -1648,12 +1637,23 @@ void predict_other_lengths(int ncl,  double ***EM_pwm, double *wcl){
 	fprintf(F, "\n");
     }
     fclose(F);
-    
+
     
 
     //**********
-    //Now create the logos for all peptide length
+    //Now create the ggseqlogo files for all peptide length [PWMs]
     //**********
+
+    
+    // define PWM
+    double **pwmL;
+	pwmL=new double*[naa_max];
+	for(int s=0; s<naa_max; s++) {
+	   	pwmL[s]=new double[N];
+	   	for(int j=0; j<N; j++)
+		pwmL[s][j]=0;
+    }
+
 
     for(int s1=naa_min; s1<=naa_max; s1++){
 
@@ -1666,53 +1666,77 @@ void predict_other_lengths(int ncl,  double ***EM_pwm, double *wcl){
 	}
 	
 	for(int n=0; n<ncl+trash; n++){
+	
+		// set pwmL to 0
+	    for(int s=0; s<s1; s++) {
+	   		for(int j=0; j<N; j++)
+				pwmL[s][j]=0;
+    		}
+
 	    ct=0;
 	    if(n<ncl){
-		sprintf(file, "%s/LoLa/LoLa_L%d_%d_%d.txt", out_dir, s1, ncl, n+1);
+		//sprintf(file, "%s/LoLa/LoLa_L%d_%d_%d.txt", out_dir, s1, ncl, n+1);
+		sprintf(file2, "%s/ggseqlogo/pwm_L%d_%d_%d.txt", out_dir, s1, ncl, n+1);
 	    } else if(n==ncl){
-		sprintf(file, "%s/LoLa/LoLa_L%d_%d_Trash.txt", out_dir, s1, ncl);
+		//sprintf(file, "%s/LoLa/LoLa_L%d_%d_Trash.txt", out_dir, s1, ncl);
+		sprintf(file2, "%s/ggseqlogo/pwm_L%d_%d_Trash.txt", out_dir, s1, ncl);
 	    }
 	    
-	    F=fopen(file, "w");
+	    //F=fopen(file, "w");
 	
 	    
-	    if(n==ncl){
-		fprintf(F, "Gene Name	LoLa_L%d_%d_Trash\nAccession	Refseq:1\nOrganism	H\nNCBITaxonomyID	1\nDomain Number	%d\nDomain Type	HLA\nInterpro ID	1\nTechnique	1\nDomain sequence	A\nDomain Range	1-1\nComment\t\nPeptideName	Peptide	CloneFrequency	QuantData	ExternalIdentifier\n", s1, ncl, size_cluster[s1][n]);
-	    } else if(n<ncl){
-		fprintf(F, "Gene Name	LoLa_L%d_%d_%d\nAccession	Refseq:1\nOrganism	H\nNCBITaxonomyID	1\nDomain Number	%d\nDomain Type	HLA\nInterpro ID	1\nTechnique	1\nDomain sequence	A\nDomain Range	1-1\nComment\t\nPeptideName	Peptide	CloneFrequency	QuantData	ExternalIdentifier\n", s1, ncl, n+1, size_cluster[s1][n]);
-	    }
+	    //if(n==ncl){
+		//fprintf(F, "Gene Name	LoLa_L%d_%d_Trash\nAccession	Refseq:1\nOrganism	H\nNCBITaxonomyID	1\nDomain Number	%d\nDomain Type	HLA\nInterpro ID	1\nTechnique	1\nDomain sequence	A\nDomain Range	1-1\nComment\t\nPeptideName	Peptide	CloneFrequency	QuantData	ExternalIdentifier\n", s1, ncl, size_cluster[s1][n]);
+	    //} else if(n<ncl){
+		//fprintf(F, "Gene Name	LoLa_L%d_%d_%d\nAccession	Refseq:1\nOrganism	H\nNCBITaxonomyID	1\nDomain Number	%d\nDomain Type	HLA\nInterpro ID	1\nTechnique	1\nDomain sequence	A\nDomain Range	1-1\nComment\t\nPeptideName	Peptide	CloneFrequency	QuantData	ExternalIdentifier\n", s1, ncl, n+1, size_cluster[s1][n]);
+	    //}
 	    
 	    if(size_cluster[s1][n]>0){
-	    
 		
 		//Build the  sequence list
 		t=0;
 		for(int j=0; j<kp_all; j++) {
 		    if(naa_all[j]==s1 && cluster[j]==n){
-			fprintf(F, "%d\t", t+1);
+		//	fprintf(F, "%d\t", t+1);
 			for(int s=0; s<naa_all[j]; s++) {
-			    fprintf(F, "%c", letter[peptide_all[j][s]]);
+		//	    fprintf(F, "%c", letter[peptide_all[j][s]]);
+
+			    pwmL[s][peptide_all[j][s]]++;
+		//	    
 			}
-			fprintf(F, "\t1\n");
+		//	fprintf(F, "\t1\n");
 			t++;
-		    }	    
+		    }
 		}
-	    } else if(size_cluster[s1][n]==0){
-		fprintf(F, "%d\tEMPTY", 1);
-		for(int s=6; s<naa_core; s++) {
-		    fprintf(F, "X");
-		}
-		fprintf(F, "\t1\n");
+	    //} else if(size_cluster[s1][n]==0){
+		//fprintf(F, "%d\tEMPTY", 1);
+		//for(int s=6; s<naa_core; s++) {
+		//    fprintf(F, "X");
+		//}
+		//fprintf(F, "\t1\n");
 	    }
-	    fclose(F);
-	    sprintf(buffer, "LoLa/");
+
+    	F2=fopen(file2, "w");
+		for(int j=0; j<N; j++) {
+			fprintf(F2, "%c\t", letter[j]);
+			for(int s=0; s<s1; s++) {
+				fprintf(F2, "%.6f\t", pwmL[s][j]);
+			}
+			fprintf(F2, "\n");
+		}
+		fclose(F2);
+
+
+	    //fclose(F);
+
+	    //sprintf(buffer, "LoLa/");
 	    
 	    
-	    if(n<ncl){
-		afile<<buffer<<"LoLa_L"<<s1<<"_"<<ncl<<"_"<<n+1<<".txt\n";
-	    } else if(n==ncl){
-		afile<<buffer<<"LoLa_L"<<s1<<"_"<<ncl<<"_Trash.txt\n";
-	    }
+	    //if(n<ncl){
+		//afile<<buffer<<"LoLa_L"<<s1<<"_"<<ncl<<"_"<<n+1<<".txt\n";
+	    //} else if(n==ncl){
+		//afile<<buffer<<"LoLa_L"<<s1<<"_"<<ncl<<"_Trash.txt\n";
+	    //}
 	   
 	}
 	afile.close();
