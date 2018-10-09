@@ -86,8 +86,7 @@ for (my $s=$naa_min; $s<=$naa_max; $s++) {
 my $logo_path;
 my $s;
 my $p;
-foreach $s (@list) {
-    
+foreach $s (@list) { 
     my $size;
        
     open(OUT, ">".$outdir."/logos_html/logos_L$s.html");
@@ -132,8 +131,9 @@ foreach $s (@list) {
 	
 	
 	for (my $tsm=1; $tsm<=$sm; $tsm++) {
-
-	    if ($logo_type eq "LoLa") {
+	    if ($logo_type eq "ggseqlogo") {
+		@multiple_list = <$outdir/$logo_dir/logo_L$s\_$sm\_$tsm-*.png>;
+	    } elsif ($logo_type eq "LoLa") {
 		@multiple_list = <$outdir/$logo_dir/LoLa_L$s\_$sm\_$tsm-*.png>;
 	    } elsif ($logo_type eq "Seq2Logo") {
 		@multiple_list = <$outdir/$logo_dir/Seq2Logo_L$s\_$sm\_$tsm-*.png>;
@@ -150,7 +150,9 @@ foreach $s (@list) {
 		}
 	    }
 	}
-	if ($logo_type eq "LoLa") {
+	if ($logo_type eq "ggseqlogo") {
+	    @multiple_trash = <$outdir/$logo_dir/logo_L$s\_$sm\_Trash-*.png>;
+	} elsif ($logo_type eq "LoLa") {
 	    @multiple_trash = <$outdir/$logo_dir/LoLa_L$s\_$sm\_Trash-*.png>;
 	} elsif ($logo_type eq "Seq2Logo") {
 	    @multiple_trash = <$outdir/$logo_dir/Seq2Logo_L$s\_$sm\_Trash-*.png>;
