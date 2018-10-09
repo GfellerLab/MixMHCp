@@ -4,16 +4,16 @@
 #
 # For any question, please contact david.gfeller@unil.ch
 #
-# To cite MixMHCp2.0, please refer to:
+# To cite MixMHCp2.1, please refer to:
 # - Bassani-Sternberg M and Gfeller D, Unsupervised HLA Peptidome Deconvolution Improves Ligand Prediction Accuracy and Predicts Cooperative Effects in Peptide-HLA Interactions. J. Immunol. (2016)
-# - Gfeller D et al. Peptide length distribution and multiple specificity in naturally presented HLA-I ligands, bioRxiv (2018).
+# - Solleder M et al. bioRxiv (2018).
 #
 # MixMHCp can be used freely by academic groups for non-commercial purposes (see license).
 # The product is provided free of charge, and, therefore, on an "as is"
 # basis, without warranty of any kind.
 #
 # FOR-PROFIT USERS
-# If you plan to use MixMHCp (version 2.0) in any for-profit
+# If you plan to use MixMHCp (version 2.1) in any for-profit
 # application, you are required to obtain a separate license.
 # To do so, please contact eauffarth@licr.org or lfoit@licr.org at the Ludwig Institute for  Cancer Research Ltd.
 #
@@ -21,16 +21,10 @@
 ############
 
 ############
-# New features of the version 2.0
+# New features of the version 2.1
 ############
 
-This new version is tailored to motif deconvolution in HLA-I peptides and includes several specific options related to this problem. You can still use it for other types of data, but you should treat separately peptides of different lengths.
-
-Ligands of different lengths can be used in input. Unsupervised motif deconvolution is performed on ligands of the same size as the core (default: 9). The other peptides are scored based on the 9-mer motifs (see below). The logos for each motif and each peptide length can be visualized in logos_html directory. Responsibility files include the information about the predicted position of the start and end of each of the core motifs. Please refer to MHCpExt (Guillaume et al PNAS 2018) for an analysis with statistical significance of C- or N-terminal extensions.
-
-Trash cluster is also included (default '-tr 1') with amino acid frequencies given by the background distributions (default uniprot). This is useful to eliminate contaminants from MS data, especially among longer peptides.
-
-Peptide length distributions are plotted in length_distribution.html for each motif.
+The main novelty of this version is the possibility to have non-standard amino acids (e.g., phosphorylated residues). Non-standard amino acids need to be provided in input sequences as small letters and will be displayed in purple in the logos
 
 ############
 
@@ -40,9 +34,9 @@ MixMHCp can be run from the terminal (command-line) on Mac and Linux. It require
 
 1) Create a directory where to install MixMHCp. Please avoid blank space or non-canonical characters in your path. 
 
-2) Decompress MixMHCp2.0.tar.gz in this directory.
+2) Decompress MixMHCp2.1.tar.gz in this directory.
 
-3) Open MixMHCp file with a text editor (e.g., emacs) and put between the "" of lib_path="YOUR PATH TO MixMHCp2.0/lib FOLDER" the absolute path of the MixMHCp2.0/lib directory.
+3) Open MixMHCp file with a text editor (e.g., emacs) and put between the "" of lib_path="YOUR PATH TO MixMHCp2.1/lib FOLDER" the absolute path of the MixMHCp2.1/lib directory.
 
 4) Put the MixMHCp executable in your PATH.
 
@@ -61,7 +55,7 @@ Make sure your input files are text files and do not include any rich formatting
 
 - Test MixMHCp:
 
-Make sure you are in the MixMHCp2.0 directory and you have manually entered the path in MixMHCp file (see point 3) in installation instructions).
+Make sure you are in the MixMHCp2.1 directory and you have manually entered the path in MixMHCp file (see point 3) in installation instructions).
 
 Run the command: ./MixMHCp -i test/test.txt -o test/out -m 8
 
@@ -75,7 +69,8 @@ The test file represents HLA-I ligands identified in Bassani-Sternberg et al. MC
 - Other informations:
 #####################
 
-1) MixMHCp should only be applied on pre-aligned peptides of  length no more than 10 amino acid longer than the core, and does not include any alignment step.
+
+1) MixMHCp should only be applied on pre-aligned peptides of length no more than 10 amino acid longer than the core, and does not include any alignment step. Ligands of different lengths can be used in input. Unsupervised motif deconvolution is performed on ligands of the same size as the core (default: 9). The other peptides are scored based on the 9-mer motifs (see below). The logos for each motif and each peptide length can be visualized in logos_html directory. Responsibility files include the information about the predicted position of the start and end of each of the core motifs. Please refer to MHCpExt (Guillaume et al PNAS 2018) for an analysis with statistical significance of C- or N-terminal extensions.
 
 2) The responsibility values provide information of how much each peptide contributes to each motif. These values can then be used to cluster the peptides and the users can choose different threshold (e.g., any number, or the maximal value). The information about the position of the start and end of the core motif corresponds to the best position based on the scoring with each PWM inferred from peptides of the core length.
 
@@ -91,4 +86,6 @@ The test file represents HLA-I ligands identified in Bassani-Sternberg et al. MC
 
 8) Trash cluster is included to remove peptides that do not match any of the inferred motifs.
 
-9) Motif deconvolution is only performed for peptides of length lcore (default: 9). Peptides of other lengths are scored based on the PWM inferred from the 9-mers, using the first 3 and last 2 positions, and allowing for N- or C-terminal extensions. However, the fraction of peptides from each motif may change substantially for different peptide lengths (either because HLA-I molecules have different length distributions, or because of more frequent contaminations in longer peptides in MS data). For this reason, the weight on each motif (including the trash motif) are inferred by Expectation Maximization for each peptide length separately. Information about these weights and the corresponding length distributions are provided in weights/ directory. The first column of the weight_n.txt files gives the peptide length, the second column gives the total number of peptides of each length, the n_weight columns give the weight of each motif, as defined in the mixture model, the n_distr columns give the peptide length distributions for each motif, as obtained after clustering the peptides based on teh maximum of the responsibility values.
+9) Motif deconvolution is only performed for peptides of length lcore (default: 9). Peptides of other lengths are scored based on the PWM inferred from the 9-mers, using the first 3 and last 2 positions, and allowing for N- or C-terminal extensions. However, the fraction of peptides from each motif may change substantially for different peptide lengths (either because HLA-I molecules have different length distributions, or because of more frequent contaminations in longer peptides in MS data). For this reason, the weight on each motif (including the trash motif) are inferred by Expectation Maximization for each peptide length separately. Information about these weights and the corresponding length distributions are provided in weights/ directory. The first column of the weight_n.txt files gives the peptide length, the second column gives the total number of peptides of each length, the n_weight columns give the weight of each motif, as defined in the mixture model, the n_distr columns give the peptide length distributions for each motif, as obtained after clustering the peptides based on the maximum of the responsibility values. Peptide length distributions are plotted in length_distribution.html for each motif.
+
+10) MixMHCp is tailored to motif deconvolution in HLA-I peptides and includes several specific options related to this problem. You can still use it for other types of data, but it is advised to treat separately peptides of different lengths, unless you expect N- and C-terminal motifs to be conserved.
