@@ -21,12 +21,18 @@ inputType <- args[6]
 
 
 ## load functions (incase not as a package)
-source(paste(pathLib, 'ggseqlogoMOD/ggseqlogoMOD.R', sep = ''))
-source(paste(pathLib, 'ggseqlogoMOD/ggseqlogo.R', sep = ''))
-source(paste(pathLib, 'ggseqlogoMOD/col_schemes.R', sep = ''))
-source(paste(pathLib, 'ggseqlogoMOD/heights.R', sep = ''))
+#source(paste(pathLib, 'ggseqlogoMOD/ggseqlogoMOD.R', sep = ''))
+#source(paste(pathLib, 'ggseqlogoMOD/ggseqlogo.R', sep = ''))
+#source(paste(pathLib, 'ggseqlogoMOD/col_schemes.R', sep = ''))
+#source(paste(pathLib, 'ggseqlogoMOD/heights.R', sep = ''))
+
+source(paste(pathLib, 'R/ggseqlogo.R', sep = ''))
+source(paste(pathLib, 'R/col_schemes.R', sep = ''))
+source(paste(pathLib, 'R/heights.R', sep = ''))
 
 pdf(NULL)
+
+GGSEQLOGO_FONT_BASE = system.file(paste0(pathLib, 'inst/extdata'))
 
 ## check additional residues in alphabet
 addAlph <- c()
