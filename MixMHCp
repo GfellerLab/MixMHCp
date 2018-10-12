@@ -1,11 +1,11 @@
 #!/bin/bash
 
 ############
-# Written by David Gfeller, with help from TaeHyung Kim and Marc S. Tyndel for the logo visualization part with LoLa.
+# Written by David Gfeller.
 #
 # For any question, please contact david.gfeller@unil.ch
 #
-# To cite MixMHCp2.0, please refer to:
+# To cite MixMHCp2.1, please refer to:
 # - Bassani-Sternberg M and Gfeller D, Unsupervised HLA Peptidome Deconvolution Improves Ligand Prediction Accuracy and Predicts Cooperative Effects in Peptide-HLA Interactions. J. Immunol. (2016)
 # - Gfeller D et al. Peptide length distriution and multiple specificity in HLA-I ligands, bioRxiv (2018).
 #
@@ -46,7 +46,7 @@ Mandatory parameters:
 
 
 Optional parameters:
-  -m, --max-pwms          Maximum number of PWMs (default: 6, max: 20)
+  -m, --max-pwms          Maximum number of PWMs (default: 6, max: 50)
   -b, --bias              Specify a residue bias file (default: uniprot based background frequencies, otherwise specifiy a file)
   -a, --alphabet          Specify your alphabet (default: ACDEFGHIKLMNPQRSTVWY, characters allowed: ACDEFGHIKLMNPQRSTVWYabcdefghijklmnopqrstuvwxyz)
 
