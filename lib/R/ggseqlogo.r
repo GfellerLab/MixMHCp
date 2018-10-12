@@ -35,9 +35,10 @@ list_fonts <- function(v=T){
 
 
 # Read font from file if not in global envir.
-get_font <- function(font){
-  
-  GGSEQLOGO_FONT_BASE = getOption('GGSEQLOGO_FONT_BASE')
+get_font <- function(font, libPath){
+
+  GGSEQLOGO_FONT_BASE = paste0(libPath, 'inst/extdata')
+  #GGSEQLOGO_FONT_BASE = getOption('GGSEQLOGO_FONT_BASE')
   if(is.null(GGSEQLOGO_FONT_BASE)){
     GGSEQLOGO_FONT_BASE=system.file("extdata", "", package = "ggseqlogo")
     options(GGSEQLOGO_FONT_BASE=GGSEQLOGO_FONT_BASE)
@@ -67,10 +68,10 @@ get_font <- function(font){
 logo_data <- function( seqs, method='bits', stack_width=0.95, 
                        rev_stack_order=F, font, seq_group=1, 
                        seq_type = 'auto', namespace=NULL, 
-                       additionalAA=NULL, smallSampleCorr=TRUE ){
+                       additionalAA=NULL, smallSampleCorr=TRUE, libPath=NULL ){
 
   # Get font 
-  font_df = get_font(font)
+  font_df = get_font(font, libPath)
   
   # TODO
   # hh = twosamplelogo_method(seqs, seqs_bg, pval_thresh=0.05, seq_type = seq_type, namespace = namespace)
@@ -155,7 +156,7 @@ geom_logo <- function(data = NULL, method='bits', seq_type='auto', namespace=NUL
                       font='roboto_medium', stack_width=0.95, rev_stack_order=F, col_scheme = 'auto',
                       low_col='black', high_col='yellow', na_col='grey20',
                       plot=T,
-                      additionalAA = NULL, smallSampleCorr = TRUE, legendText = TRUE, ...) {
+                      additionalAA = NULL, smallSampleCorr = TRUE, legendText = TRUE, libPath = NULL, ...) {
   
   if(stack_width > 1 | stack_width <= 0) stop('"stack_width" must be between 0 and 1')
   if(is.null(data)) stop('Missing "data" parameter!')
@@ -182,7 +183,7 @@ geom_logo <- function(data = NULL, method='bits', seq_type='auto', namespace=NUL
       logo_data(seqs = curr_seqs, method = method, stack_width = stack_width, 
                 rev_stack_order = rev_stack_order, seq_group = n, seq_type = seq_type, 
                 font = font, namespace=namespace,
-                additionalAA = additionalAA, smallSampleCorr = smallSampleCorr)
+                additionalAA = additionalAA, smallSampleCorr = smallSampleCorr, libPath = libPath)
     })
     data = do.call(rbind, data_sp)
     # Set factor for order of facet
@@ -356,6 +357,7 @@ ggseqlogo <- function(data, facet='wrap', scales='free_x', ncol=NULL, nrow=NULL,
 #' # Plot phosphorylated binding motif of HLA-B0702:
 #' ggseqlogoMOD(b7p)
 ggseqlogoMOD <- function( data,
+                          libPath = NULL,
                           smallSampleCorr = FALSE,
                           col_scheme = 'modified',
                           additionalAA = 'sty',
@@ -383,7 +385,8 @@ ggseqlogoMOD <- function( data,
     #### do the plotting of the sequence logo (by Omar Wagih's ggseqlogo)
     geom_logo(data=data, font=font, 
               col_scheme=col_scheme, legendText=legendText,
-              smallSampleCorr = smallSampleCorr, additionalAA = additionalAA) +
+              smallSampleCorr = smallSampleCorr, additionalAA = additionalAA,
+              libPath = libPath) +
     
     #### size of title, size of x and y tick marks, size of y axis description
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),

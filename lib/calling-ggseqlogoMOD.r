@@ -32,8 +32,6 @@ source(paste(pathLib, 'R/heights.R', sep = ''))
 
 pdf(NULL)
 
-GGSEQLOGO_FONT_BASE = system.file(paste0(pathLib, 'inst/extdata'))
-
 ## check additional residues in alphabet
 addAlph <- c()
 alph <- c('A','C','D','E','F','G','H','I','K','L','M','N','O','P','Q','R','S','T','V','W','Y')
