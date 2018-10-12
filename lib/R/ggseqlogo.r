@@ -135,7 +135,10 @@ theme_logo <- function(base_size=12, base_family=''){
 #' One can also pass custom color scheme objects created with the \code{make_col_scheme} function
 #' @param low_col,high_col Colors for low and high ends of the gradient if a quantitative color scheme is used (default: "black" and "yellow").
 #' @param na_col Color for letters missing in color scheme (default: "grey20")
-#' @param plot If \code{FALSE}, plotting data is returned 
+#' @param plot If \code{FALSE}, plotting data is returned
+#' @param smallSampleCorr Include small-sample correction in information content or not.
+#' @param additionalAA Amino acids that include a modification.
+#' @param legendText Plot legend or not.  
 #' @param ... Additional arguments passed to layer params
 #' 
 #' @export
@@ -152,7 +155,7 @@ geom_logo <- function(data = NULL, method='bits', seq_type='auto', namespace=NUL
                       font='roboto_medium', stack_width=0.95, rev_stack_order=F, col_scheme = 'auto',
                       low_col='black', high_col='yellow', na_col='grey20',
                       plot=T,
-                      additionalAA = additionalAA, smallSampleCorr = smallSampleCorr, legendText = FALSE, ...) {
+                      additionalAA = NULL, smallSampleCorr = TRUE, legendText = TRUE, ...) {
   
   if(stack_width > 1 | stack_width <= 0) stop('"stack_width" must be between 0 and 1')
   if(is.null(data)) stop('Missing "data" parameter!')
