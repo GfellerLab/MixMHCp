@@ -61,7 +61,7 @@ Run the command: ./MixMHCp -i test/test.txt -o test/out -m 8
 
 Apart from path names, your output should be similar to what you have in test/out_compare directory.
 
-The test file represents HLA-I ligands identified in Bassani-Sternberg et al. MCP 2015 in SupB15WT sample. The solution with 8 motifs corresponds to the accurate deconvolution (HLA-A03:01 - motifs 6 and 8, HLA-A11:01 - motifs 1 and 7, HLA-B51:01 - motif 2, HLA-B52:01 - motif 4, HLA-C12:04 - motif 3, HLA-C14:02 - motif 5). In particular the multiple specificity of HLA-A03:01 (motif 6 and 8) is clearly visible in the 9-mers (A11:01 peptides are also split into two motifs). Splitting of motifs of HLA-A and HLA-B alleles in order to detect those from HLA-C alleles is a frequent situation when analyzing HLA peptidomics data.
+The test file represents HLA-I ligands identified in Bassani-Sternberg et al. Nat Commun. 2016 in Mel12 sample. The solution with 3 motifs corresponds to the accurate deconvolution (HLA-A01:01 - motifs 3, HLA-B08:01 - motif 1, HLA-C07:01 - motif 2).
 
 
 
