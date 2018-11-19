@@ -57,7 +57,7 @@ Make sure your input files are text files and do not include any rich formatting
 
 Make sure you are in the MixMHCp2.1 directory and you have manually entered the path in MixMHCp file (see point 3) in installation instructions).
 
-Run the command: ./MixMHCp -i test/test.txt -o test/out -m 8
+Run the command: ./MixMHCp -i test/test.txt -o test/out -m 3
 
 Apart from path names, your output should be similar to what you have in test/out_compare directory.
 
