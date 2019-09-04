@@ -36,8 +36,8 @@ GetOptions ("i=s" => \$input,    # input file name
             "o=s" => \$outdir,    # output dir
 	    "b=s" => \$bias,	 # residue bias list file
 	    "l=s" => \$logo,   # Decide if the logos should be drawn
-            "m1=i" => \$minncomp,# minimal number of PWMs
-            "m2=i" => \$maxncomp,# maximal number of PWMs
+            "m_min=i" => \$minncomp,# minimal number of PWMs
+            "m=i" => \$maxncomp,# maximal number of PWMs
             "lt=s" => \$logo_type,# type of logo
             "tm" => \$temp_keep, # Don't delete temporary files
             "n=s" => \$name,
@@ -136,7 +136,6 @@ system("mkdir -p ".$outdir."/responsibility");
 system("mkdir -p ".$outdir."/Multiple_PWMs");
 system("mkdir -p ".$outdir."/weights");
 system("mkdir -p ".$outdir."/weights/plots");
-#system("mkdir -p ".$outdir."/LoLa");
 system("mkdir -p ".$outdir."/ggseqlogo");
 if($logo==1){
     system("mkdir -p ".$outdir."/logos");
@@ -175,8 +174,7 @@ $ct=1;
 foreach $p (@pep){
    printf OUT ">$ct %d\n$p\n", length($p);
    push @len, length($p);
-#     printf OUT ">$ct\n$p\n";
-    $ct++;
+   $ct++;
 }
 close OUT;
 
@@ -194,7 +192,6 @@ if( !(grep { $_ eq $lcore } @len) ){
 if($run_all==1){
     my $command = " -m1 ".$minncomp." -m2 ".$maxncomp." -d ".$outdir." -b $bs -a ".$alphabet." -lc ".$lcore." -tr ".$trash;
     print_and_log("Running MixMHCp..."."\n");
-    #print_and_log($MixMHCp_dir."MixMHCp.x $command >> ".$outdir."pipeline.log 2>> ".$outdir."pipeline.log\n");
     my $exit_status = system($MixMHCp_dir."MixMHCp.x $command >> ".$outdir."pipeline.log 2>> ".$outdir."pipeline.log");
     
     if (!($exit_status == 0)){
@@ -204,9 +201,6 @@ if($run_all==1){
 }
 
 
-#my $logo="Seq2Logo";  #This is not working well on the GUI because the path to Seq2Logo and gs cannot be found.
-#Moreover, in case of gaps, Seq2Logo.py treats them as no sequences... so this works only well if we do not align the sequences
-
 if($logo==1 && $run_all==1){
 
     my $input_type = "Protein";
@@ -214,17 +208,8 @@ if($logo==1 && $run_all==1){
     if($logo_type eq "ggseqlogo"){
 	my $inputType = 'pwm'; # 'resp'; 
 	print_and_log("Generating logos with ggseqlogo... "."\n");
-	#print("Rscript $MixMHCp_dir/calling-ggseqlogoMOD.r $MixMHCp_dir $outdir $outdir $alphabet $minncomp $maxncomp $inputType\n");
 	system("Rscript $MixMHCp_dir/calling-ggseqlogoMOD.r $MixMHCp_dir $outdir $outdir $alphabet $minncomp $maxncomp $inputType >> $outdir/pipeline.log");    #Need to fix $minncomp.
-	#die;
-
-    #} elsif ($logo_type eq "LoLa"){
-	
-	#print_and_log("Generating logos..."."\n");
-	#system("mkdir -p ".$outdir."logos");
-	#system("java -Xmx1024m -cp ".$MixMHCp_dir."jar/aida-3.3.jar:".$MixMHCp_dir."jar/biojava-1.4a.jar:".$MixMHCp_dir."jar/brainlib-1.4.jar:".$MixMHCp_dir."jar/freehep-export-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphics2d-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-emf-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-java-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-pdf-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-ps-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-svg-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-swf-2.1.1.jar:".$MixMHCp_dir."jar/freehep-graphicsio-tests-2.1.1.jar:".$MixMHCp_dir."jar/freehep-io-2.0.2.jar:".$MixMHCp_dir."jar/freehep-swing-2.0.3.jar:".$MixMHCp_dir."jar/freehep-util-2.0.2.jar:".$MixMHCp_dir."jar/freehep-xml-2.1.MixMHCp.jar:".$MixMHCp_dir."jar/itext-2.0.2.jar:".$MixMHCp_dir."jar/jas-plotter-2.2.jar:".$MixMHCp_dir."jar/jdom-1.0.jar:".$MixMHCp_dir."jar/junit-3.8.2.jar:".$MixMHCp_dir."jar/openide-lookup-1.9-patched-1.0.jar:".$MixMHCp_dir." CreateLogo $outdir/ $input_type png $outdir F >> ".$outdir."pipeline.log");
-
-	
+	    	
     } elsif ($logo_type eq "Seq2Logo"){
 
 	print_and_log("Generating Seq2Logo... "."\n");

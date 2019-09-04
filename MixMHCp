@@ -45,8 +45,8 @@ Mandatory parameters:
 
 
 Optional parameters:
-  -m2, --max-pwms         Maximum number of PWMs (default: 6, max: 50)
-  -m1, --min_pwms         Minimum number of PWMs (default: 1, max: 50)
+  -m, --max-pwms          Maximum number of PWMs (default: 6, max: 50)
+  -m_min, --min-pwms      Minimum number of PWMs (default: 1, max: 50)
   -b, --bias              Specify a residue bias file (default: uniprot based background frequencies, otherwise specifiy a file)
   -a, --alphabet          Specify your alphabet (default: ACDEFGHIKLMNPQRSTVWY, characters allowed: ACDEFGHIKLMNPQRSTVWYabcdefghijklmnopqrstuvwxyz)
 
@@ -76,8 +76,8 @@ while [ $# -gt 0 ]; do
 	case $1 in
 		-i | --input) input=$2; shift 2;;
 		-o | --output) output=$2; shift 2;;
-		-m1 | --min-pwms) minpwms=$2; shift 2;;
-		-m2 | --max-pwms) maxpwms=$2; shift 2;;
+		-m_min | --min-pwms) minpwms=$2; shift 2;;
+		-m | --max-pwms) maxpwms=$2; shift 2;;
 		-k | --no-clean) noclean=-tm; shift 1;;
 		-a | --alphabet) alphabet=$2; shift 2;;
 		-b | --bias) bias=$2; shift 2;;
@@ -126,7 +126,7 @@ if [ -n "$logo_type" ]; then
 
     fi
 else
-    logo_type_command="-lt ggseqlogo"; #LoLa";
+    logo_type_command="-lt ggseqlogo";
 fi
 
 
@@ -147,5 +147,5 @@ output=$output/
 lib_dir=`perl -e 'use Cwd "abs_path";print abs_path(shift)' $lib`/
 
 
-perl $lib_dir/run_MixMHCp.pl $lib_dir $noclean -m1 $minpwms -m2 $maxpwms $bias_file $input -o $output -l $logo $name_file $logo_type_command -lc $lcore -tr $trash $alphabet_command
+perl $lib_dir/run_MixMHCp.pl $lib_dir $noclean -m_min $minpwms -m $maxpwms $bias_file $input -o $output -l $logo $name_file $logo_type_command -lc $lcore -tr $trash $alphabet_command
 
