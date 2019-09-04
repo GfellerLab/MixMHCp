@@ -9,9 +9,10 @@ my $logo_type=$ARGV[1];
 my $name=$ARGV[2];
 my $naa_min=$ARGV[3];
 my $naa_max=$ARGV[4];
-my $ncl=$ARGV[5];
-my $trash=$ARGV[6];
-my $lcore=$ARGV[7];
+my $ncl_min=$ARGV[5];
+my $ncl_max=$ARGV[6];
+my $trash=$ARGV[7];
+my $lcore=$ARGV[8];
 
 
 my $logo_dir="logos";
@@ -86,7 +87,8 @@ for (my $s=$naa_min; $s<=$naa_max; $s++) {
 my $logo_path;
 my $s;
 my $p;
-foreach $s (@list) { 
+foreach $s (@list) {
+    
     my $size;
        
     open(OUT, ">".$outdir."/logos_html/logos_L$s.html");
@@ -121,7 +123,7 @@ foreach $s (@list) {
     
     my @multiple_list = ();
     my @multiple_trash = ();
-    for (my $sm=1; $sm<=$ncl+$trash; $sm++) {
+    for (my $sm=$ncl_min; $sm<=$ncl_max+$trash; $sm++) {
 	my @multiple=();
 	my @multiple_size=();
 	my @trash=();
@@ -285,7 +287,7 @@ for (my $s1=$naa_min; $s1<=$naa_max; $s1++) {
 }
 print OUT '</p>'."\n";
 
-for(my $i=1; $i<=$ncl; $i++){
+for(my $i=$ncl_min; $i<=$ncl_max; $i++){
 
     if($i==1){
 	print OUT '<p><font size="4"><b>'.$i.' motif '."\n";

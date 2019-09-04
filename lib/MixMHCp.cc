@@ -36,7 +36,7 @@ using namespace std;
 
 //Functions
 
-void init_parameters(int a);
+void init_parameters();
 
 void import_alignment(char * alignment_dir);
 
@@ -68,7 +68,7 @@ void import_bias(char * out_dir, int bs);
 
 void make_cluster_pwm(int si, int ncl, double ***m, double **resp);
 
-void best_ncl(int ncl, double *KLD, double ****EM_pwm, double **wcl);
+void best_ncl(int ncl_min, int ncl_max, double *KLD, double ****EM_pwm, double **wcl);
 
 void predict_other_lengths(int ncl, double ***EM_pwm, double *wcl);
 
@@ -92,6 +92,7 @@ int kpmax;    //size of the largest set of phage peptides
 int ***comp_pep;         //peptides in each cluster
 int *cl_size;           //size of each cluster
 double fsm;
+int ncl_min;  //Minimum number of PWMs
 int ncl_max;  //Maximum number of PWMs
 int naa_max;
 int naa_min;
@@ -110,13 +111,10 @@ double Cterm_pen;
 double Nterm_pen;
 
 
-/*
-  Run with:
-  ./MixMHCp.x 0 0 5 -d ./output/ -b U
-*/
 
 int main(int argc, char ** argv)
 {
+    
     if (argc < 3) {
 	cout << "Invalid arguments. Run through MixMHCp." << endl;
 	exit(2);
@@ -127,7 +125,7 @@ int main(int argc, char ** argv)
     
     int bs;
      
-    for (int i=2; i<argc; i+=2) {
+    for (int i=1; i<argc; i+=2) {
 	
 	if (strcmp(argv[i], "-d") == 0) {
 	    //loads the param -d, out_dir
@@ -147,18 +145,27 @@ int main(int argc, char ** argv)
   	else if (strcmp(argv[i], "-lc") == 0) {
 	    naa_core=atoi(argv[i+1]);
 	}
+  	else if (strcmp(argv[i], "-m1") == 0) {
+	    ncl_min=atoi(argv[i+1]);
+	}
+  	else if (strcmp(argv[i], "-m2") == 0) {
+	    ncl_max=atoi(argv[i+1]);
+	}
     }
 
+    cout<<"Min motifs: "<<ncl_min<<endl;
+    cout<<"Max motifs: "<<ncl_max<<endl;
+  
+    
     cout<<"Trash: "<<trash<<endl;
     cout<<"Core length: "<<naa_core<<endl;
+       
     
-
-    init_parameters(atoi(argv[1]));
+    init_parameters();
     import_alignment(alignment_dir);
     import_bias(out_dir, bs);
-    
     initialize_comp();
-    
+
     EMsteps();
 
     return(0);
@@ -167,7 +174,7 @@ int main(int argc, char ** argv)
 
 
 
-void init_parameters(int a)
+void init_parameters()
 {
 
     //naa_core=9; //This should be passed as an argument
@@ -181,8 +188,7 @@ void init_parameters(int a)
     N=strlen(alphabet);
     letter=new char[N+1];
     strcpy(letter, alphabet);
-        
-    ncl_max=a;
+       
 	
     //This is the pseudo_count used in computing KLD (same values as in GibbsCluster).
     pseudo_count=200;
@@ -227,7 +233,7 @@ void EMsteps()
     full_wcl=new double*[tncl_max];
     full_EM_pwm=new double***[tncl_max];
     
-    for(int tn=0; tn<tncl_max; tn++) {
+    for(int tn=ncl_min-1; tn<tncl_max; tn++) {
 	full_EM_pwm[tn]=new double**[tn+1+trash];
 	full_wcl[tn]=new double[tn+1+trash];
 	for(int n=0; n<tn+1+trash; n++) {
@@ -312,7 +318,7 @@ void EMsteps()
     sz=new int[tncl_max];
     
     
-    sprintf(buffer, "%s/project.txt", out_dir);
+    /*sprintf(buffer, "%s/project.txt", out_dir);
     afile.open(buffer, ios::out);
     afile<<"#ProjectFile\n";
     afile.close();
@@ -320,7 +326,8 @@ void EMsteps()
     afile.open(buffer, ios::out);
     afile<<"#ProjectFile\n";
     afile.close();
-    	
+    */
+    
     cout<<"Number of peptides: "<<kp_all<<endl;
     cout<<"Number of "<<naa_core<<"-mer: "<<kp<<endl;
      
@@ -332,7 +339,7 @@ void EMsteps()
 
     srand(1);
     
-    for(int ncl=1; ncl<=ncl_max; ncl++) {
+    for(int ncl=ncl_min; ncl<=ncl_max; ncl++) {
 
 	srand(ncl);	    
 	max_LL=-10000000000.0;
@@ -400,13 +407,12 @@ void EMsteps()
     }
 	
    
-
-    best_ncl(ncl_max, KLD, full_EM_pwm, full_wcl);
-	
+    best_ncl(ncl_min, ncl_max, KLD, full_EM_pwm, full_wcl);
+  
 }
 
 
-void best_ncl(int ncl_max, double *KLD, double ****full_EM_pwm, double **full_wcl){
+void best_ncl(int ncl_min, int ncl_max, double *KLD, double ****full_EM_pwm, double **full_wcl){
 
     int ncl_final;
 
@@ -417,7 +423,7 @@ void best_ncl(int ncl_max, double *KLD, double ****full_EM_pwm, double **full_wc
     double Max_KLD=KLD[0];
     int Max_KLD_pos=0;
     
-    for(int n=1; n<=ncl_max; n++){
+    for(int n=ncl_min; n<=ncl_max; n++){
 	if(KLD[n]>Max_KLD){
 	    Max_KLD=KLD[n];
 	    Max_KLD_pos=n;
@@ -536,8 +542,7 @@ void best_ncl(int ncl_max, double *KLD, double ****full_EM_pwm, double **full_wc
     sprintf(buffer, "%s/KLD/best_ncl.txt", out_dir);
     F=fopen(buffer, "w");
     fprintf(F, "Final number of motifs:\t%d\n", ncl_final);
-    fprintf(F, "1\t%.6f\n", KLD[1]);
-    for(int n=2; n<=ncl_max; n++){
+    for(int n=ncl_min; n<=ncl_max; n++){
 	fprintf(F, "%d\t%.6f\n", n, KLD[n]);
     }
     fclose(F);
@@ -932,7 +937,7 @@ void import_alignment(char * alignment_dir)
     string nada="";
     fstream afile1;
 
-    cout << "Input folder:\n" << alignment_dir << endl;
+    cout << "Input folder: " << alignment_dir << endl;
   
 
     char * pch;
@@ -1657,14 +1662,14 @@ void predict_other_lengths(int ncl,  double ***EM_pwm, double *wcl){
 
     for(int s1=naa_min; s1<=naa_max; s1++){
 
-	if(ncl==1){
+	/*if(ncl==1){
 	    sprintf(buffer, "%s/project.txt", out_dir);
 	    afile.open(buffer, std::ios_base::app);
 	} else if(ncl>1){
 	    sprintf(buffer, "%s/EM_project.txt", out_dir);
 	    afile.open(buffer, std::ios_base::app);
 	}
-	
+	*/
 	for(int n=0; n<ncl+trash; n++){
 	
 		// set pwmL to 0
@@ -1739,7 +1744,7 @@ void predict_other_lengths(int ncl,  double ***EM_pwm, double *wcl){
 	    //}
 	   
 	}
-	afile.close();
+	//afile.close();
     
     }
     

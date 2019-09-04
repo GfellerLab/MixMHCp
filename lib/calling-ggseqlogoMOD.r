@@ -9,15 +9,17 @@
 ## packages
 library(ggplot2)
 
-
 ## input arguments
 args <- commandArgs(trailingOnly = TRUE)
 pathLib <- args[1]
 input <- args[2]
 output <- args[3]
 alphabet <- args[4]
-clusters <- args[5]
-inputType <- args[6]
+clusters_min <- args[5]
+clusters_max <- args[6]
+inputType <- args[7]
+
+
 
 
 ## load functions (incase not as a package)
@@ -80,7 +82,7 @@ if (inputType == 'pwm'){
   lengthsOfData <- c()
   
   ## go over all clusters defined at input
-  for(i in 1:clusters){
+  for(i in clusters_min:clusters_max){
     
     ## open responsibilty file
     d <- read.table(paste0(pathInput, 'resp_', i, '.txt'),
@@ -115,8 +117,9 @@ if (inputType == 'pwm'){
     
   ## check if for all lengths, every cluster c has 1:c subclusters
   for(peptL in lengthsOfData){
-    for(c1 in 1:args$clusters){
-      if( !(exists(paste0('L', peptL, '_', c1, '_Trash'), listPeptides)) ){
+    #for(c1 in 1:args$clusters){
+     for(c1 in clusters_min:clusters_max){
+        if( !(exists(paste0('L', peptL, '_', c1, '_Trash'), listPeptides)) ){
         N <- append( N, paste0('L', peptL, '_', c1, '_Trash') )
       }
       for(c2 in 1:c1){

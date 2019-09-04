@@ -3,11 +3,12 @@ cm <- commandArgs(trailingOnly = TRUE)
 
 min <- as.numeric(cm[2])
 max <- as.numeric(cm[3])
-ncl <- as.numeric(cm[4])
-trash <- as.numeric(cm[5])
+ncl_min <- as.numeric(cm[4])
+ncl_max <- as.numeric(cm[5])
+trash <- as.numeric(cm[6])
 lb <- c(0:5)/5
 
-for(i in 1:ncl){
+for(i in ncl_min:ncl_max){
   
   m <- read.table(paste(cm[1],"weights/weights_", i,".txt", sep=""), header=T)
 

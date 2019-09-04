@@ -27,7 +27,7 @@ use strict;
 use File::Copy;
 
 
-my ($verbose, $output, $input, $dir, $outdir, $temp_keep, $maxncomp, $logo, $comp, $bs, $bias, $name, $logo_type, $lcore, $trash, $alphabet);  
+my ($verbose, $output, $input, $dir, $outdir, $temp_keep, $minncomp, $maxncomp, $logo, $comp, $bs, $bias, $name, $logo_type, $lcore, $trash, $alphabet);  
 
 my $MixMHCp_dir = $ARGV[0];
 
@@ -36,7 +36,8 @@ GetOptions ("i=s" => \$input,    # input file name
             "o=s" => \$outdir,    # output dir
 	    "b=s" => \$bias,	 # residue bias list file
 	    "l=s" => \$logo,   # Decide if the logos should be drawn
-            "m=i" => \$maxncomp,# maximal number of PWMs
+            "m1=i" => \$minncomp,# minimal number of PWMs
+            "m2=i" => \$maxncomp,# maximal number of PWMs
             "lt=s" => \$logo_type,# type of logo
             "tm" => \$temp_keep, # Don't delete temporary files
             "n=s" => \$name,
@@ -50,12 +51,21 @@ if($maxncomp>50){
     print "Maximal number of motifs is set to 50\n";
 }
 if($maxncomp<=0){
-    print "Number of motifs must be bigger then 0"."\n";
+    print "Maximal number of motifs must be bigger then 0"."\n";
+    exit(10);
+}
+if($minncomp<=0){
+    print "Minimal number of motifs must be bigger then 0"."\n";
     exit(10);
 }
 
-if($lcore<5){
-    print "Minimal length for the core is 5"."\n";
+if($minncomp > $maxncomp){
+    print "Minimal number of motifs must be smaller or equal to maximal number of motifs\n";
+    exit(10);
+}
+
+if($lcore<2){
+    print "Minimal length for the core is 2"."\n";
     exit(10);
 }
 
@@ -182,9 +192,11 @@ if( !(grep { $_ eq $lcore } @len) ){
 }
 
 if($run_all==1){
-    my $command = $maxncomp." -d ".$outdir." -b $bs -a ".$alphabet." -lc ".$lcore." -tr ".$trash;
+    my $command = " -m1 ".$minncomp." -m2 ".$maxncomp." -d ".$outdir." -b $bs -a ".$alphabet." -lc ".$lcore." -tr ".$trash;
     print_and_log("Running MixMHCp..."."\n");
+    #print_and_log($MixMHCp_dir."MixMHCp.x $command >> ".$outdir."pipeline.log 2>> ".$outdir."pipeline.log\n");
     my $exit_status = system($MixMHCp_dir."MixMHCp.x $command >> ".$outdir."pipeline.log 2>> ".$outdir."pipeline.log");
+    
     if (!($exit_status == 0)){
 	print "Error: MixMHCp failed to execute."."\n";
 	exit($exit_status);
@@ -202,8 +214,9 @@ if($logo==1 && $run_all==1){
     if($logo_type eq "ggseqlogo"){
 	my $inputType = 'pwm'; # 'resp'; 
 	print_and_log("Generating logos with ggseqlogo... "."\n");
-	system("Rscript $MixMHCp_dir/calling-ggseqlogoMOD.r $MixMHCp_dir $outdir $outdir $alphabet $maxncomp $inputType >> $outdir/pipeline.log");
-    
+	#print("Rscript $MixMHCp_dir/calling-ggseqlogoMOD.r $MixMHCp_dir $outdir $outdir $alphabet $minncomp $maxncomp $inputType\n");
+	system("Rscript $MixMHCp_dir/calling-ggseqlogoMOD.r $MixMHCp_dir $outdir $outdir $alphabet $minncomp $maxncomp $inputType >> $outdir/pipeline.log");    #Need to fix $minncomp.
+	#die;
 
     #} elsif ($logo_type eq "LoLa"){
 	
@@ -222,12 +235,12 @@ if($logo==1 && $run_all==1){
     }
     
     print_and_log("Generating HTML tables document..."."\n");
-    system("perl ".$MixMHCp_dir."tablegenerator_html.pl $outdir $logo_type $name $naa_min $naa_max $maxncomp $trash $lcore");
+    system("perl ".$MixMHCp_dir."tablegenerator_html.pl $outdir $logo_type $name $naa_min $naa_max $minncomp $maxncomp $trash $lcore"); #Need to fix $minncomp.
     
 }
 
 #Plot the peptide length distributions
-my $exit_status = system("Rscript $MixMHCp_dir/plot_length.R $outdir $naa_min $naa_max $maxncomp $trash");
+my $exit_status = system("Rscript $MixMHCp_dir/plot_length.R $outdir $naa_min $naa_max $minncomp $maxncomp $trash"); #Need to fix $minncomp.
 if (!($exit_status == 0)){
 	print "Error: Rscript failed to plot the peptide length distributions."."\n";
 	exit($exit_status);
@@ -235,12 +248,9 @@ if (!($exit_status == 0)){
 
 
 if ($temp_keep == 0){
-    if($run_all==1){
-	system("rm $outdir/project.txt");
-	system("rm $outdir/EM_project.txt");
-    }
-	#system("rm -r $outdir/LoLa");
-	#system("rm -r $outdir/ggseqlogo");
+   
+    #system("rm -r $outdir/LoLa");
+    #system("rm -r $outdir/ggseqlogo");
     if ($logo_type eq "Seq2Logo"){
     	system("rm -r $outdir/Seq2Logo");
     }
