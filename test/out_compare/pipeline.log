@@ -1,0 +1,65 @@
+Processing input files...
+
+Running MixMHCp...
+
+Min motifs: 1
+Max motifs: 6
+Trash: 1
+Core length: 9
+Input folder: /Users/davidgfeller/Research/LICR/Research/Immunopeptidomics/Full_package/MixMHCp2.1/test/out_compare//data
+Background: Uniprot
+Number of peptides: 7070
+Number of 9-mer: 4153
+Generating logos with ggseqlogo... 
+
+[1] "Input type read from MixMHCp: PWM"
+[1] "logos/logo_L10_1_1-556"
+[1] "logos/logo_L10_1_Trash-58"
+[1] "logos/logo_L10_2_1-68"
+[1] "logos/logo_L10_2_2-471"
+[1] "logos/logo_L10_2_Trash-75"
+[1] "logos/logo_L10_3_1-68"
+[1] "logos/logo_L10_3_2-2"
+[1] "logos/logo_L10_3_3-465"
+[1] "logos/logo_L10_3_Trash-79"
+[1] "logos/logo_L10_4_1-465"
+[1] "logos/logo_L10_4_2-2"
+[1] "logos/logo_L10_4_3-29"
+[1] "logos/logo_L10_4_4-39"
+[1] "logos/logo_L10_4_Trash-79"
+[1] "logos/logo_L10_5_1-467"
+[1] "logos/logo_L10_5_2-2"
+[1] "logos/logo_L10_5_3-2"
+[1] "logos/logo_L10_5_4-39"
+[1] "logos/logo_L10_5_5-27"
+[1] "logos/logo_L10_5_Trash-77"
+[1] "logos/logo_L10_6_1-450"
+[1] "logos/logo_L10_6_2-2"
+[1] "logos/logo_L10_6_3-3"
+[1] "logos/logo_L10_6_4-25"
+[1] "logos/logo_L10_6_5-86"
+[1] "logos/logo_L10_6_6-29"
+[1] "logos/logo_L10_6_Trash-19"
+[1] "logos/logo_L11_1_1-289"
+[1] "logos/logo_L11_1_Trash-80"
+[1] "logos/logo_L11_2_1-52"
+[1] "logos/logo_L11_2_2-220"
+[1] "logos/logo_L11_2_Trash-97"
+[1] "logos/logo_L11_3_1-53"
+[1] "logos/logo_L11_3_3-217"
+[1] "logos/logo_L11_3_Trash-99"
+[1] "logos/logo_L11_4_1-217"
+[1] "logos/logo_L11_4_3-30"
+[1] "logos/logo_L11_4_4-20"
+[1] "logos/logo_L11_4_Trash-102"
+[1] "logos/logo_L11_5_1-217"
+[1] "logos/logo_L11_5_3-9"
+[1] "logos/logo_L11_5_4-19"
+[1] "logos/logo_L11_5_5-23"
+[1] "logos/logo_L11_5_Trash-101"
+[1] "logos/logo_L11_6_1-215"
+[1] "logos/logo_L11_6_3-11"
+[1] "logos/logo_L11_6_4-13"
+[1] "logos/logo_L11_6_5-68"
+[1] "logos/logo_L11_6_6-23"
+[1] "logos/logo_L11_6_Trash-39"
