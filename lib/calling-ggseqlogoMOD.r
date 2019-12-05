@@ -22,7 +22,7 @@ inputType <- args[7]
 
 
 
-## load functions (incase not as a package)
+## load functions
 source(paste(pathLib, 'R/ggseqlogo.r', sep = ''))
 source(paste(pathLib, 'R/col_schemes.r', sep = ''))
 source(paste(pathLib, 'R/heights.r', sep = ''))
@@ -40,6 +40,12 @@ for(a in A){
 }
 addAlph <- paste(addAlph, collapse = '')
 
+## define ylimit for plots by ggseqlogoMOD depending on alphabet size
+if(length(A) <= 20){
+  ylimit <- c(0, log2(20))
+} else{
+  ylimit <- c(0, log2( length(A) ))
+}
 
 ## function to build PWM
 buildPWM <- function(peptides, alphabet, lengthP){
@@ -167,7 +173,7 @@ for(w in 1:length(df)){
     l <- ggseqlogoMOD(data = pwm,
                       libPath = pathLib,
                       additionalAA = addAlph,
-                      ylim = c(0, log2( length(A) )),
+                      ylim = ylimit,
                       axisTextSizeX = 6,
                       axisTextSizeY = 6,
                       axisTitleSize = 6) +
