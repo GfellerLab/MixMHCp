@@ -4,7 +4,7 @@
 #
 # For any question, please contact david.gfeller@unil.ch
 #
-# To cite MixMHCp (version 2.1), please refer to Bassani-Sternberg M and Gfeller D*, J. Immunol. (2016) and Solleder et al. (2018)
+# To cite MixMHCp (version 2.1), please refer to Bassani-Sternberg M and Gfeller D*, J. Immunol. (2016) and Gfeller D et al. J Immunol (2018)
 #
 # MixMHCp can be used freely by academic groups for non-commercial purposes (see license).
 # The product is provided free of charge, and, therefore, on an "as is"
