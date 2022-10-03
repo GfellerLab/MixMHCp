@@ -13,7 +13,7 @@
 # FOR-PROFIT USERS
 # If you plan to use MixMHCp (version 2.1) in any for-profit
 # application, you are required to obtain a separate  license.
-# To do so, please contact eauffarth@licr.org or lfoit@licr.org at the Ludwig Institute for  Cancer Research Ltd.
+# To do so, please contact Nadette Bulgin (nbulgin@lcr.org) at the Ludwig Institute for  Cancer Research Ltd.
 #
 # Copyright (2016) David Gfeller
 ############
