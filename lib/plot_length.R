@@ -13,11 +13,11 @@ for(i in ncl_min:ncl_max){
   m <- read.table(paste(cm[1],"weights/weights_", i,".txt", sep=""), header=T)
 
   for(j in 1:i){
-    sum <- sum(m[,i+j+2+trash])
+    sum <- sum(m[,i+j+3])
     if(sum>0){
-      tm <- m[,i+j+2+trash]/sum
+      tm <- m[,i+j+3]/sum
     } else {
-      tm <- rep(0,length(m[,i+j+2+trash]))   
+      tm <- rep(0,length(m[,i+j+3]))   
     }
     png(paste(cm[1],"weights/plots/lg_",i,"_",j,".png", sep=""))
     plot(m[,1], tm, xlab="", ylim=c(0,1), ylab="", cex.axis=1.5, yaxt="n", xaxt="n", type="b")
